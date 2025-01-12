@@ -1,4 +1,22 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c0f9011_c835349e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2025-01-12T14:19:33Z",
+      "side": 1,
+      "message": "You need to pay attention on how you are cherry-picking stuff. See: https://review.lineageos.org/q/I19ca34b8965168f011cc1352eba420f2d54b0258",
+      "revId": "9ad9645ced0e7888e30fd6c0a1897c333c4dcb53",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ],
   "submitRequirementResults": []
 }
