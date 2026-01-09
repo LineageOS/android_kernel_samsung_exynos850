@@ -343,6 +343,11 @@ config IPMMU_VMSA
 
 	  If unsure, say N.
 
+config SAMSUNG_SECURE_IOVA
+	tristate "Samsung Secure IOVA Support"
+	help
+	  Support secure device virtual address management for Samsung Exynos SoCs.
+
 config SPAPR_TCE_IOMMU
 	bool "sPAPR TCE IOMMU Support"
 	depends on PPC_POWERNV || PPC_PSERIES
