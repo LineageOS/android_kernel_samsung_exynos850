@@ -43,7 +43,6 @@
 #include <uapi/linux/dma-buf.h>
 #include <uapi/linux/magic.h>
 
-#include "dma-buf-container.h"
 #include "dma-buf-trace.h"
 #include "dma-buf-sysfs-stats.h"
 
@@ -447,15 +446,6 @@ static long dma_buf_ioctl(struct file *file,
 				ret = dma_buf_begin_cpu_access(dmabuf, dir);
 
 		return ret;
-#ifdef CONFIG_COMPAT
-	case DMA_BUF_COMPAT_IOCTL_MERGE:
-#endif
-	case DMA_BUF_IOCTL_MERGE:
-		return dma_buf_merge_ioctl(dmabuf, cmd, arg);
-	case DMA_BUF_IOCTL_CONTAINER_SET_MASK:
-		return dmabuf_container_set_mask_user(dmabuf, arg);
-	case DMA_BUF_IOCTL_CONTAINER_GET_MASK:
-		return dmabuf_container_get_mask_user(dmabuf, arg);
 	case DMA_BUF_IOCTL_TRACK:
 		return dmabuf_trace_track_buffer(dmabuf);
 	case DMA_BUF_IOCTL_UNTRACK:
