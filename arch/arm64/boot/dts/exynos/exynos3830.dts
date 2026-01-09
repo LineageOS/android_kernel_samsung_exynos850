@@ -1836,6 +1836,11 @@
 		};
 	};
 
+	system_dma_heap {
+		compatible = "samsung,dma-heap-system";
+		dma-heap,name = "system";
+	};
+
 	usi@10021020 {
 		compatible = "samsung,exynos-usi-v2";
 		reg = <0x00 0x10021020 0x04>;
