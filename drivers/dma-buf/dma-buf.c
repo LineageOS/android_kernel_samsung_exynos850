@@ -43,7 +43,6 @@
 #include <uapi/linux/dma-buf.h>
 #include <uapi/linux/magic.h>
 
-#include "dma-buf-trace.h"
 #include "dma-buf-sysfs-stats.h"
 
 struct dma_buf_list {
@@ -77,8 +76,6 @@ static void dma_buf_release(struct dentry *dentry)
 	dmabuf = dentry->d_fsdata;
 	if (unlikely(!dmabuf))
 		return;
-
-	dmabuf_trace_free(dmabuf);
 
 	BUG_ON(dmabuf->vmapping_counter);
 
@@ -446,11 +443,6 @@ static long dma_buf_ioctl(struct file *file,
 				ret = dma_buf_begin_cpu_access(dmabuf, dir);
 
 		return ret;
-	case DMA_BUF_IOCTL_TRACK:
-		return dmabuf_trace_track_buffer(dmabuf);
-	case DMA_BUF_IOCTL_UNTRACK:
-		return dmabuf_trace_untrack_buffer(dmabuf);
-
 
 	case DMA_BUF_SET_NAME_A:
 	case DMA_BUF_SET_NAME_B:
@@ -635,10 +627,6 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 		goto err_dmabuf;
 	}
 
-	ret = dmabuf_trace_alloc(dmabuf);
-	if (ret)
-		goto err_file;
-
 	file->f_mode |= FMODE_LSEEK;
 	dmabuf->file = file;
 
@@ -656,8 +644,6 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 
 	return dmabuf;
 
-err_file:
-	fput(file);
 err_sysfs:
 	/*
 	 * Set file->f_path.dentry->d_fsdata to NULL so that when
