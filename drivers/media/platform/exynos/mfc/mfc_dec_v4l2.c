@@ -1079,6 +1079,8 @@ static int __mfc_dec_ext_info(struct mfc_ctx *ctx)
 
 	val |= DEC_SET_DYNAMIC_DPB;
 	val |= DEC_SET_DRV_DPB_MANAGER;
+	val |= DEC_SET_OPERATING_FPS;
+	val |= DEC_SET_PRIORITY;
 
 	if (MFC_FEATURE_SUPPORT(dev, dev->pdata->skype))
 		val |= DEC_SET_SKYPE_FLAG;
@@ -1170,6 +1172,10 @@ static int __mfc_dec_get_ctrl_val(struct mfc_ctx *ctx, struct v4l2_control *ctrl
 		break;
 	case V4L2_CID_MPEG_VIDEO_QOS_RATIO:
 		ctrl->value = ctx->qos_ratio;
+		break;
+	case V4L2_CID_MPEG_VIDEO_PRIORITY:
+		ctrl->value = ctx->prio;
+		mfc_debug(2, "[PRIO] user get priority: %d\n", ctrl->value);
 		break;
 	case V4L2_CID_MPEG_MFC_SET_DYNAMIC_DPB_MODE:
 		ctrl->value = dec->is_dynamic_dpb;
@@ -1291,6 +1297,14 @@ static int mfc_dec_s_ctrl(struct file *file, void *priv,
 	case V4L2_CID_MPEG_VIDEO_QOS_RATIO:
 		ctx->qos_ratio = ctrl->value;
 		mfc_info_ctx("[QoS] set %d qos_ratio\n", ctrl->value);
+		break;
+	case V4L2_CID_MPEG_VIDEO_PRIORITY:
+		ctx->prio = ctrl->value;
+		mfc_debug(2, "[PRIO] user set priority: %d\n", ctrl->value);
+		break;
+	case V4L2_CID_MPEG_MFC51_VIDEO_FRAME_RATE:
+		ctx->operating_framerate = ctrl->value;
+		mfc_debug(2, "[QoS] user set operating frame rate: %d\n", ctrl->value);
 		break;
 	case V4L2_CID_MPEG_MFC_SET_DYNAMIC_DPB_MODE:
 		dec->is_dynamic_dpb = ctrl->value;
