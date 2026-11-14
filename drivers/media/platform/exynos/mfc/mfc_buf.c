@@ -143,6 +143,20 @@ int mfc_alloc_instance_context(struct mfc_ctx *ctx)
 		return -ENOMEM;
 	}
 
+	/*
+	 * The buffer comes from the ION page pool without zeroing. Firmware
+	 * that cannot clear the context memory itself (no mem_clear) then
+	 * sees stale data from a previous user and may fail OPEN_INSTANCE.
+	 */
+	if (!MFC_FEATURE_SUPPORT(dev, dev->pdata->mem_clear) &&
+			ctx->instance_ctx_buf.vaddr && !ctx->is_drm) {
+		memset(ctx->instance_ctx_buf.vaddr, 0, ctx->instance_ctx_buf.size);
+		dma_sync_sg_for_device(dev->device,
+				ctx->instance_ctx_buf.sgt->sgl,
+				ctx->instance_ctx_buf.sgt->orig_nents,
+				DMA_TO_DEVICE);
+	}
+
 	mfc_debug(2, "[MEMINFO] Instance buf ctx[%d] size: %ld, daddr: 0x%08llx\n",
 			ctx->num, ctx->instance_ctx_buf.size, ctx->instance_ctx_buf.daddr);
 	mfc_debug_leave();

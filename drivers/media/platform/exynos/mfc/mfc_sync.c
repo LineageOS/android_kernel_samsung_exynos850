@@ -119,6 +119,10 @@ wait_done:
 		mfc_err_ctx("Finished (ctx->int_reason:%d, command: %d)\n",
 				ctx->int_reason, command);
 		mfc_err_ctx("But error (ctx->int_err:%d)\n", ctx->int_err);
+		if (command == MFC_REG_R2H_CMD_OPEN_INSTANCE_RET)
+			mfc_err_ctx("open instance failed, ctx buf daddr: 0x%08llx size: %zu\n",
+					ctx->instance_ctx_buf.daddr,
+					ctx->instance_ctx_buf.size);
 		return -1;
 	}
 
