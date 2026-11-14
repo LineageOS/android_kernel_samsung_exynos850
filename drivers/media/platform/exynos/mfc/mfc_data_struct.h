@@ -1701,6 +1701,10 @@ struct mfc_ctx {
 	unsigned int qos_ratio;
 	bool update_framerate;
 
+	/* user requested priority (0: real time) and operating rate (fps * 1000) */
+	int prio;
+	unsigned long operating_framerate;
+
 	int qos_req_step;
 	struct list_head qos_list;
 
