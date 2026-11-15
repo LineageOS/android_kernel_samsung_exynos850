@@ -1622,6 +1622,19 @@ static int mfc_probe(struct platform_device *pdev)
 		goto err_iovmm_active;
 	}
 
+	/*
+	 * The firmware addresses the instance context buffers relative to its
+	 * base (RISC_BASE_ADDRESS) and fails OPEN_INSTANCE with error 52 for a
+	 * context below it. The IOVA space is shared with the MCSC and MSCL, so
+	 * a firmware buffer allocated at the first open, e.g. while the camera
+	 * is running, can end up above later context buffers. Allocate it now,
+	 * while the IOVA space is still empty, to get the lowest address.
+	 */
+	if (mfc_alloc_firmware(dev))
+		dev_warn(&pdev->dev, "Failed to allocate the firmware buffer, retrying at open\n");
+	else
+		dev->fw.status = 1;
+
 	dev->logging_data = devm_kzalloc(&pdev->dev, sizeof(struct mfc_debug), GFP_KERNEL);
 	if (!dev->logging_data) {
 		dev_err(&pdev->dev, "no memory for logging data\n");
