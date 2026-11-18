@@ -283,6 +283,45 @@ alternative_else_nop_endif
 
 	stp	x22, x23, [sp, #S_PC]
 
+#ifdef CONFIG_SHADOW_CALL_STACK
+	.if	\el == 1
+	/*
+	 * Prebuilt blobs (see blob_x18.S) use x18 as a scratch register. If
+	 * we interrupted one, x18 is not a valid shadow stack pointer: use
+	 * the one saved on entry to the blob. The blob's own x18 is restored
+	 * from pt_regs by kernel_exit.
+	 */
+	adr_l	x24, blob_x18_ranges
+	ldp	x25, x26, [x24]			// blob code
+	cmp	x22, x25
+	b.lo	9001f
+	cmp	x22, x26
+	b.lo	9005f
+9001:	ldp	x25, x26, [x24, #16]		// k2b return path, x18 not yet restored
+	cmp	x22, x25
+	b.lo	9002f
+	cmp	x22, x26
+	b.lo	9005f
+9002:	ldp	x25, x26, [x24, #32]		// b2k stubs: x18 bad only if called from a blob
+	cmp	x22, x25
+	b.lo	9006f
+	cmp	x22, x26
+	b.hs	9006f
+	ldp	x25, x26, [x24]
+	cmp	lr, x25
+	b.lo	9003f
+	cmp	lr, x26
+	b.lo	9005f
+9003:	ldp	x25, x26, [x24, #16]
+	cmp	lr, x25
+	b.lo	9006f
+	cmp	lr, x26
+	b.hs	9006f
+9005:	ldr	x18, [tsk, #TSK_TI_BLOB_SCS]
+9006:
+	.endif
+#endif
+
 	/* Not in a syscall by default (el0_svc overwrites for real syscall) */
 	.if	\el == 0
 	mov	w21, #NO_SYSCALL

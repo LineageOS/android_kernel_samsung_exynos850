@@ -47,6 +47,7 @@ int main(void)
 #endif
 #ifdef CONFIG_SHADOW_CALL_STACK
   DEFINE(TSK_TI_SCS,		offsetof(struct task_struct, thread_info.shadow_call_stack));
+  DEFINE(TSK_TI_BLOB_SCS,	offsetof(struct task_struct, thread_info.blob_scs));
 #endif
   DEFINE(TSK_STACK,		offsetof(struct task_struct, stack));
   BLANK();
