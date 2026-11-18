@@ -121,7 +121,7 @@ void is_lib_vra_task_trigger(struct is_lib_vra *lib_vra,
 
 	spin_lock(&task_vra->work_lock);
 
-	task_vra->work[task_vra->work_index % LIB_MAX_TASK].func = func;
+	task_vra->work[task_vra->work_index % LIB_MAX_TASK].func = blob_x18_k2b(func);
 	task_vra->work[task_vra->work_index % LIB_MAX_TASK].params = lib_vra;
 	task_vra->work_index++;
 	work_index = (task_vra->work_index - 1) % LIB_MAX_TASK;
@@ -354,7 +354,8 @@ int __nocfi is_lib_vra_init_frame_work(struct is_lib_vra *lib_vra,
 		lib_vra->dma_out.base_adr, lib_vra->dma_out.total_size);
 
 	callbacks = &lib_vra->call_backs;
-	callbacks->sen_final_output_ready_ptr = is_lib_vra_callback_final_output_ready;
+	callbacks->sen_final_output_ready_ptr =
+		blob_x18_b2k(is_lib_vra_callback_final_output_ready);
 
 	status = CALL_VRAOP(lib_vra, vra_frame_work_init,
 				&lib_vra->fr_work_in,
@@ -760,9 +761,24 @@ void is_lib_vra_assert(void)
 	BUG_ON(1);
 }
 
+/* The VRA blob fills in a kernel side table of its own functions */
+u32 __nocfi get_lib_vra_func(void *func)
+{
+	vra_load_itf_funcs_t fn =
+		(vra_load_itf_funcs_t)blob_x18_k2b((void *)LIB_VRA_API_ADDR);
+	u32 ret;
+
+	ret = fn(func);
+	blob_x18_wrap_k2b_table(func, sizeof(struct is_lib_vra_interface_funcs));
+
+	return ret;
+}
+
 void __nocfi is_lib_vra_os_funcs(void)
 {
 	struct is_lib_vra_os_system_funcs funcs;
+
+	memset(&funcs, 0, sizeof(funcs));
 
 	funcs.frame_end_process = is_lib_vra_frame_end_process;
 	funcs.set_dram_adr_from_core_to_vdma = is_dva_vra;
@@ -784,13 +800,14 @@ void __nocfi is_lib_vra_os_funcs(void)
 	funcs.spin_unlock_irqrestore = is_spin_unlock_irqrestore;
 	funcs.lib_assert       = is_lib_vra_assert;
 	funcs.lib_in_irq       = is_lib_in_irq;
+	blob_x18_wrap_b2k_table(&funcs, sizeof(funcs));
 
 #ifdef ENABLE_FPSIMD_FOR_USER
 	fpsimd_get();
-	((vra_set_os_funcs_t)VRA_LIB_ADDR)((void *)&funcs);
+	((vra_set_os_funcs_t)blob_x18_k2b((void *)VRA_LIB_ADDR))((void *)&funcs);
 	fpsimd_put();
 #else
-	((vra_set_os_funcs_t)VRA_LIB_ADDR)((void *)&funcs);
+	((vra_set_os_funcs_t)blob_x18_k2b((void *)VRA_LIB_ADDR))((void *)&funcs);
 #endif
 }
 

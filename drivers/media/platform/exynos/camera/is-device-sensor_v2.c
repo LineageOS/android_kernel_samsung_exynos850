@@ -3295,7 +3295,12 @@ int __nocfi is_sensor_register_itf(struct is_device_sensor *device)
 	FIMC_BUG(!pdata);
 
 #if !defined(DISABLE_LIB)
-	register_sensor_itf = (register_sensor_interface)SENSOR_REGISTER_FUNC_ADDR;
+	/* the blobs call back into every op of the sensor interface */
+	blob_x18_wrap_b2k_table(&sensor_peri->sensor_interface,
+				sizeof(sensor_peri->sensor_interface));
+
+	register_sensor_itf = (register_sensor_interface)
+		blob_x18_k2b((void *)SENSOR_REGISTER_FUNC_ADDR);
 #ifdef ENABLE_FPSIMD_FOR_USER
 	fpsimd_get();
 	ret = register_sensor_itf((void *)&sensor_peri->sensor_interface);
@@ -3310,7 +3315,8 @@ int __nocfi is_sensor_register_itf(struct is_device_sensor *device)
 	}
 
 #ifdef USE_RTA_BINARY
-	register_sensor_itf = (register_sensor_interface)SENSOR_REGISTER_FUNC_ADDR_RTA;
+	register_sensor_itf = (register_sensor_interface)
+		blob_x18_k2b((void *)SENSOR_REGISTER_FUNC_ADDR_RTA);
 #ifdef ENABLE_FPSIMD_FOR_USER
 	fpsimd_get();
 	ret = register_sensor_itf((void *)&sensor_peri->sensor_interface);
@@ -3322,6 +3328,24 @@ int __nocfi is_sensor_register_itf(struct is_device_sensor *device)
 		merr("[SS%d][M%d] register_sensor_itf(rta) failed(%d)", device,
 			device->device_id, module->sensor_id, ret);
 		goto p_err;
+	}
+#endif
+
+#ifdef CONFIG_SHADOW_CALL_STACK
+	{
+		/* in case the blobs left their own callbacks in the interface */
+		void **p = (void **)&sensor_peri->sensor_interface;
+		int i, n = 0;
+
+		for (i = 0; i < sizeof(sensor_peri->sensor_interface) / sizeof(void *); i++) {
+			if (blob_x18_k2b(p[i]) != p[i]) {
+				p[i] = blob_x18_k2b(p[i]);
+				n++;
+			}
+		}
+		if (n)
+			minfo("[SS%d] blob_x18: wrapped %d blob callbacks in sensor itf\n",
+				device, device->device_id, n);
 	}
 #endif
 

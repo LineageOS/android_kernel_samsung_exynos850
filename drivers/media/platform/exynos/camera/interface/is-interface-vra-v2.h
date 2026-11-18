@@ -26,7 +26,7 @@
 
 typedef int (*vra_set_os_funcs_t)(void *func);
 typedef u32 (*vra_load_itf_funcs_t)(void *func);
-static const vra_load_itf_funcs_t get_lib_vra_func = (vra_load_itf_funcs_t)LIB_VRA_API_ADDR;
+u32 get_lib_vra_func(void *func);
 
 enum is_lib_vra_state_list {
 	VRA_LIB_FRAME_WORK_INIT,

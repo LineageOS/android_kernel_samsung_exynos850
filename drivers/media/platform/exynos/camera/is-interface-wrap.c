@@ -515,10 +515,10 @@ int __nocfi is_itf_power_down_wrap(struct is_interface *interface, u32 instance)
 #ifdef USE_DDK_SHUT_DOWN_FUNC
 #ifdef ENABLE_FPSIMD_FOR_USER
 	fpsimd_get();
-	((ddk_shut_down_func_t)DDK_SHUT_DOWN_FUNC_ADDR)(data);
+	((ddk_shut_down_func_t)blob_x18_k2b((void *)DDK_SHUT_DOWN_FUNC_ADDR))(data);
 	fpsimd_put();
 #else
-	((ddk_shut_down_func_t)DDK_SHUT_DOWN_FUNC_ADDR)(data);
+	((ddk_shut_down_func_t)blob_x18_k2b((void *)DDK_SHUT_DOWN_FUNC_ADDR))(data);
 #endif
 #endif
 
@@ -549,10 +549,10 @@ int is_itf_sensor_mode_wrap(struct is_device_ischain *device,
 		info_hw("%s: call RTA_SHUT_DOWN\n", __func__);
 #ifdef ENABLE_FPSIMD_FOR_USER
 		fpsimd_get();
-		((rta_shut_down_func_t)RTA_SHUT_DOWN_FUNC_ADDR)(data);
+		((rta_shut_down_func_t)blob_x18_k2b((void *)RTA_SHUT_DOWN_FUNC_ADDR))(data);
 		fpsimd_put();
 #else
-		((rta_shut_down_func_t)RTA_SHUT_DOWN_FUNC_ADDR)(data);
+		((rta_shut_down_func_t)blob_x18_k2b((void *)RTA_SHUT_DOWN_FUNC_ADDR))(data);
 #endif
 	}
 #else

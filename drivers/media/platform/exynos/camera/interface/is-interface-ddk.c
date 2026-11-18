@@ -511,6 +511,37 @@ struct lib_callback_func is_lib_cb_func = {
 	.io_callback		= is_lib_io_callback,
 };
 
+static const struct lib_callback_func *is_lib_get_cb_func(void)
+{
+	/* called back from the DDK blob */
+	blob_x18_wrap_b2k_table(&is_lib_cb_func, sizeof(is_lib_cb_func));
+
+	return &is_lib_cb_func;
+}
+
+/*
+ * The DDK hands out a table of its own functions. Give the hw ips a copy
+ * whose entries go through blob_x18 stubs, and leave the DDK's one alone
+ * as the DDK may use it internally.
+ */
+u32 __nocfi get_lib_func(u32 type, void **lib_func)
+{
+	static struct lib_interface_func wrapped[LIB_FUNC_TYPE_END];
+	register_lib_isp fn = (register_lib_isp)blob_x18_k2b((void *)LIB_ISP_ADDR);
+	void *table = NULL;
+	u32 ret;
+
+	ret = fn(type, &table);
+	if (table && type < LIB_FUNC_TYPE_END) {
+		memcpy(&wrapped[type], table, sizeof(wrapped[type]));
+		blob_x18_wrap_k2b_table(&wrapped[type], sizeof(wrapped[type]));
+		table = &wrapped[type];
+	}
+	*lib_func = table;
+
+	return ret;
+}
+
 #if defined(SOC_ME0S) || defined(SOC_ZSL_STRIP_DMA0) || defined(SOC_DNS0S) || \
 	defined(SOC_ME1S) || defined(SOC_ZSL_STRIP_DMA1) || defined(SOC_ZSL_STRIP_DMA2)
 static int __nocfi __is_extra_chain_create(struct is_lib_isp *this, u32 chain_id, ulong base_addr)
@@ -518,7 +549,7 @@ static int __nocfi __is_extra_chain_create(struct is_lib_isp *this, u32 chain_id
 	int ret = 0;
 
 	ret = CALL_LIBOP(this, chain_create, chain_id, base_addr, 0x0,
-				&is_lib_cb_func);
+				is_lib_get_cb_func());
 	if (ret) {
 		err_lib("(%d) chain_create fail!!\n", chain_id);
 		ret = -EINVAL;
@@ -655,7 +686,7 @@ int __nocfi is_lib_isp_chain_create(struct is_hw_ip *hw_ip,
 	set_b_offset = (base_addr_b < base_addr) ? 0 : base_addr_b - base_addr;
 
 	ret = CALL_LIBOP(this, chain_create, chain_id, base_addr, set_b_offset,
-				&is_lib_cb_func);
+				is_lib_get_cb_func());
 	if (ret) {
 		err_lib("chain_create fail (%d)", hw_ip->id);
 		return -EINVAL;

@@ -266,7 +266,7 @@ struct lib_system_config {
 };
 
 typedef u32 (*register_lib_isp)(u32 type, void **lib_func);
-static const register_lib_isp get_lib_func = (register_lib_isp)LIB_ISP_ADDR;
+u32 get_lib_func(u32 type, void **lib_func);
 
 struct lib_interface_func {
 	int (*chain_create)(u32 chain_id, ulong addr, u32 offset,

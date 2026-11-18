@@ -1150,7 +1150,7 @@ int __nocfi is_timer_create(int timer_id, void *func, void *data)
 	t = &lib->timer[timer_id];
 	hrtimer_init(&t->dtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 
-	t->cb = func;
+	t->cb = blob_x18_k2b(func);
 	t->data = data;
 	t->dtimer.function = ddk_timer;
 
@@ -1254,7 +1254,7 @@ int is_register_interrupt(struct hwip_intr_handler info)
 	pHandler->id		= info.id;
 	pHandler->priority	= info.priority;
 	pHandler->ctx		= info.ctx;
-	pHandler->handler	= info.handler;
+	pHandler->handler	= blob_x18_k2b(info.handler);
 	pHandler->valid		= true;
 	pHandler->chain_id	= info.chain_id;
 
@@ -1337,7 +1337,7 @@ static int is_register_general_interrupt(struct general_intr_handler info)
 	}
 
 	if (!ret) {
-		lib->intr_handler[info.id].intr_func = info.intr_func;
+		lib->intr_handler[info.id].intr_func = blob_x18_k2b(info.intr_func);
 
 		/* Request IRQ */
 		ret = request_threaded_irq(lib->intr_handler[info.id].irq, NULL, is_general_interrupt_isr,
@@ -1628,7 +1628,7 @@ bool lib_task_trigger(struct is_lib_support *this,
 
 	lib_task = &this->task_taaisp[(priority - TASK_PRIORITY_BASE - 1)];
 	spin_lock(&lib_task->work_lock);
-	lib_task->work[lib_task->work_index % LIB_MAX_TASK].func = (task_func)func;
+	lib_task->work[lib_task->work_index % LIB_MAX_TASK].func = (task_func)blob_x18_k2b(func);
 	lib_task->work[lib_task->work_index % LIB_MAX_TASK].params = params;
 	lib_task->work_index++;
 	index = (lib_task->work_index - 1) % LIB_MAX_TASK;
@@ -2521,6 +2521,9 @@ int __nocfi is_load_ddk_bin(int loadType)
 	snprintf(bin_type, sizeof(bin_type), "ISP");
 #endif
 
+	/* the DDK/RTA/VRA blobs use x18 as a scratch register */
+	blob_x18_set_range(LIB_START, LIB_START + LIB_SIZE);
+
 	/* load DDK library */
 	setup_binary_loader(&bin, 3, -EAGAIN, NULL, NULL);
 #ifdef CAMERA_FW_LOADING_FROM
@@ -2638,14 +2641,16 @@ int __nocfi is_load_ddk_bin(int loadType)
 	release_binary(&bin);
 
 	gPtr_lib_support.log_ptr = 0;
+	memset(os_system_funcs, 0, sizeof(os_system_funcs));
 	set_os_system_funcs(os_system_funcs);
+	blob_x18_wrap_b2k_table(os_system_funcs, sizeof(os_system_funcs));
 	/* call start_up function for DDK binary */
 #ifdef ENABLE_FPSIMD_FOR_USER
 	fpsimd_get();
-	((start_up_func_t)lib_isp)((void **)os_system_funcs);
+	((start_up_func_t)blob_x18_k2b((void *)lib_isp))((void **)os_system_funcs);
 	fpsimd_put();
 #else
-	((start_up_func_t)lib_isp)((void **)os_system_funcs);
+	((start_up_func_t)blob_x18_k2b((void *)lib_isp))((void **)os_system_funcs);
 #endif
 	return 0;
 
@@ -2813,14 +2818,16 @@ int __nocfi is_load_rta_bin(int loadType)
 	carve_binary_version(IS_BIN_LIBRARY, IS_BIN_LIB_HINT_RTA, &bin);
 	release_binary(&bin);
 
+	memset(os_system_funcs, 0, sizeof(os_system_funcs));
 	set_os_system_funcs_for_rta(os_system_funcs);
+	blob_x18_wrap_b2k_table(os_system_funcs, sizeof(os_system_funcs));
 	/* call start_up function for RTA binary */
 #ifdef ENABLE_FPSIMD_FOR_USER
 	fpsimd_get();
-	((rta_start_up_func_t)lib_rta)(NULL, (void **)os_system_funcs);
+	((rta_start_up_func_t)blob_x18_k2b((void *)lib_rta))(NULL, (void **)os_system_funcs);
 	fpsimd_put();
 #else
-	((rta_start_up_func_t)lib_rta)(NULL, (void **)os_system_funcs);
+	((rta_start_up_func_t)blob_x18_k2b((void *)lib_rta))(NULL, (void **)os_system_funcs);
 #endif
 #endif
 

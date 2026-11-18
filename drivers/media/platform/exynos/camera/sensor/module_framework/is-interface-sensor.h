@@ -11,6 +11,7 @@
 #ifndef IS_SENSOR_INTERFACE_H
 #define IS_SENSOR_INTERFACE_H
 
+#include <asm/blob_x18.h>
 #include "is-core.h"
 #include "is-mem.h"
 #include "is-config.h"

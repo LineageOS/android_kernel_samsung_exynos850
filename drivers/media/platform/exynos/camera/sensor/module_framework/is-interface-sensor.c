@@ -3585,6 +3585,9 @@ int register_paf_notifier(struct is_sensor_interface *itf,
 		return -EINVAL;
 	}
 
+	/* the notifier usually lives in the RTA/DDK blob */
+	notifier = blob_x18_k2b(notifier);
+
 	FIMC_BUG(itf->magic != SENSOR_INTERFACE_MAGIC);
 
 	sensor_peri = container_of(itf, struct is_device_sensor_peri,
@@ -3633,6 +3636,9 @@ int unregister_paf_notifier(struct is_sensor_interface *itf,
 		err("invalid sensor interface");
 		return -EINVAL;
 	}
+
+	/* the notifier usually lives in the RTA/DDK blob */
+	notifier = blob_x18_k2b(notifier);
 
 	FIMC_BUG(itf->magic != SENSOR_INTERFACE_MAGIC);
 

@@ -12,6 +12,7 @@
 #define IS_API_COMMON_H
 
 #include <linux/vmalloc.h>
+#include <asm/blob_x18.h>
 
 #include "is-core.h"
 #include "is-debug.h"
