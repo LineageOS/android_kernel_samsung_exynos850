@@ -27,6 +27,8 @@
 #define dmabuf_memlog_write_printf(memlog_obj, fmt, ...) \
 	memlog_write_printf(memlog_obj, MEMLOG_LEVEL_NOTICE, fmt, ##__VA_ARGS__)
 #else
+struct memlog_obj;
+
 #define dmabuf_memlog_write_printf(memlog_obj, fmt, ...) do { } while (0)
 #endif
 
@@ -291,7 +293,7 @@ void show_dmabuf_trace_info(void)
 	__show_dmabuf_trace_info(NULL);
 }
 
-static void show_dmabuf_trace_handler(void *data, unsigned int filter, nodemask_t *nodemask)
+static void __maybe_unused show_dmabuf_trace_handler(void *data, unsigned int filter, nodemask_t *nodemask)
 {
 	static DEFINE_RATELIMIT_STATE(dmabuf_trace_ratelimit, HZ * 10, 1);
 

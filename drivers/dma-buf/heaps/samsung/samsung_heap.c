@@ -238,7 +238,7 @@ static const char *samsung_add_heap_name(unsigned long flags)
 	return "";
 }
 
-static void show_dmaheap_total_handler(void *data, unsigned int filter, nodemask_t *nodemask)
+static void __maybe_unused show_dmaheap_total_handler(void *data, unsigned int filter, nodemask_t *nodemask)
 {
 	struct samsung_dma_heap *heap = data;
 	u64 total_size_kb = samsung_heap_total_kbsize(heap);

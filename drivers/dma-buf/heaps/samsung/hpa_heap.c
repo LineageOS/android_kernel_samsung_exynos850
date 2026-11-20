@@ -871,7 +871,7 @@ static void hpa_add_exception_area(void)
 	}
 }
 
-static void show_hpa_heap_handler(void *data, unsigned int filter, nodemask_t *nodemask)
+static void __maybe_unused show_hpa_heap_handler(void *data, unsigned int filter, nodemask_t *nodemask)
 {
 	struct hpa_dma_heap *heap = data;
 	u64 total_size_kb = div_u64(atomic_long_read(&heap->total_bytes), 1024);
@@ -907,7 +907,7 @@ int hpa_traverse_filetable(const void *t, struct file *file, unsigned fd)
  * The file descriptor might be tracked on dma-buf-trace because that interates dma-buf
  * file descriptor when show_mem() calls, so we only show devices to attach the hpa buffers.
  */
-static void show_hpa_trace_handler(void *data, unsigned int filter, nodemask_t *nodemask)
+static void __maybe_unused show_hpa_trace_handler(void *data, unsigned int filter, nodemask_t *nodemask)
 {
 	static DEFINE_RATELIMIT_STATE(hpa_map_ratelimit, HZ * 10, 1);
 	struct hpa_trace_task *task;
