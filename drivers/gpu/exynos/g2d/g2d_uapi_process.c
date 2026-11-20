@@ -18,7 +18,7 @@
 #include <linux/dma-buf.h>
 #include <linux/sync_file.h>
 #include <linux/iommu.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 #include <linux/slab.h>
 #include <linux/sched/mm.h>
 #include <linux/exynos_iovmm.h>
@@ -75,8 +75,7 @@ static void g2d_clean_caches_layer(struct device *dev, struct g2d_layer *layer,
 
 		dmabuf = layer->buffer[i].dmabuf.dmabuf;
 		if ((layer->buffer_type == G2D_BUFTYPE_DMABUF) &&
-				ion_cached_dmabuf(dmabuf) &&
-					ion_hwrender_dmabuf(dmabuf)) {
+				samsung_dma_buf_cached(dmabuf)) {
 				dma_sync_sg_for_cpu(dev,
 					layer->buffer[i].dmabuf.sgt->sgl,
 					layer->buffer[i].dmabuf.sgt->orig_nents,
@@ -205,7 +204,6 @@ static int g2d_get_dmabuf(struct g2d_task *task,
 	struct sg_table *sgt;
 	dma_addr_t dma_addr;
 	int ret = -EINVAL;
-	int prot = IOMMU_READ;
 
 	if (!IS_HWFC(task->flags) || (dir == DMA_TO_DEVICE)) {
 		dmabuf = dma_buf_get(data->dmabuf.fd);
@@ -231,12 +229,9 @@ static int g2d_get_dmabuf(struct g2d_task *task,
 		goto err;
 	}
 
-	if (ion_cached_dmabuf(dmabuf)) {
+	/* dma-buf heaps have no equivalent of ION_FLAG_MAY_HWRENDER */
+	if (samsung_dma_buf_cached(dmabuf))
 		task->total_cached_len += buffer->payload;
-
-		if ((dir == DMA_TO_DEVICE) && ion_hwrender_dmabuf(dmabuf))
-			task->total_hwrender_len += buffer->payload;
-	}
 
 	attachment = dma_buf_attach(dmabuf, g2d_dev->dev);
 	if (IS_ERR(attachment)) {
@@ -252,13 +247,7 @@ static int g2d_get_dmabuf(struct g2d_task *task,
 		goto err_map;
 	}
 
-	if (dir != DMA_TO_DEVICE)
-		prot |= IOMMU_WRITE;
-
-	if (device_get_dma_attr(g2d_dev->dev) == DEV_DMA_COHERENT)
-		prot |= IOMMU_CACHE;
-
-	dma_addr = ion_iovmm_map(attachment, 0, buffer->payload, dir, prot);
+	dma_addr = samsung_dma_buf_iova_map(attachment);
 	if (IS_ERR_VALUE(dma_addr)) {
 		ret = (int)dma_addr;
 		perrfndev(g2d_dev, "failed to iovmm map for dmabuf (%d)", ret);
@@ -284,8 +273,7 @@ err:
 static int g2d_put_dmabuf(struct g2d_device *g2d_dev, struct g2d_buffer *buffer,
 			  enum dma_data_direction dir)
 {
-	ion_iovmm_unmap(buffer->dmabuf.attachment,
-			buffer->dma_addr - buffer->dmabuf.offset);
+	samsung_dma_buf_iova_unmap(buffer->dmabuf.attachment, buffer->dma_addr - buffer->dmabuf.offset);
 	dma_buf_unmap_attachment(buffer->dmabuf.attachment,
 				 buffer->dmabuf.sgt, dir);
 	dma_buf_detach(buffer->dmabuf.dmabuf, buffer->dmabuf.attachment);
