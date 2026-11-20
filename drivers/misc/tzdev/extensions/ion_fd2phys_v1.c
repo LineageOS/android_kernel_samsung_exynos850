@@ -21,11 +21,6 @@
 #include <linux/fs.h>
 #include <linux/init.h>
 
-#if defined(CONFIG_ARCH_RANCHU)
-#include <linux/ion.h>
-#else
-#include "../../../staging/android/ion/ion.h"
-#endif
 
 #include <linux/kernel.h>
 #include <linux/mm.h>
@@ -36,6 +31,9 @@
 #include "core/cdev.h"
 
 #define TZDEV_MAX_PFNS_COUNT	(SIZE_MAX / sizeof(sk_pfn_t))
+
+/* ION_HEAP_TYPE_SYSTEM, reported to the secure world over sysfs */
+#define IONFD2PHYS_SYSTEM_HEAP_ID	0
 
 struct ionfd2phys {
 	int fd;
@@ -193,7 +191,7 @@ static struct tz_cdev ionfd2phys_cdev = {
 static ssize_t system_heap_id_show(struct device *dev, struct device_attribute *attr,
 			char *buf)
 {
-	return sprintf(buf, "%d\n", ION_HEAP_TYPE_SYSTEM);
+	return sprintf(buf, "%d\n", IONFD2PHYS_SYSTEM_HEAP_ID);
 }
 
 static DEVICE_ATTR(system_heap_id, S_IRUGO, system_heap_id_show, NULL);
