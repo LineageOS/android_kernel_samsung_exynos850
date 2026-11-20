@@ -105,6 +105,9 @@ void show_dmabuf_dva(struct device *dev);
 #define DMA_HEAP_FLAG_VIDEO_ALIGNED BIT(2)
 #define DMA_HEAP_FLAG_UNTOUCHABLE BIT(3)
 
+/* This is special case, temporal usage */
+#define DMA_HEAP_FLAG_ALLOW_KVA BIT(7)
+
 static inline bool dma_heap_flags_uncached(unsigned long flags)
 {
 	return !!(flags & DMA_HEAP_FLAG_UNCACHED);
@@ -128,6 +131,11 @@ static inline bool dma_heap_skip_cache_ops(unsigned long flags)
 static inline bool dma_heap_flags_video_aligned(unsigned long flags)
 {
 	return !!(flags & DMA_HEAP_FLAG_VIDEO_ALIGNED);
+}
+
+static inline bool dma_heap_flags_kva_is_allowed(unsigned long flags)
+{
+	return !!(flags & DMA_HEAP_FLAG_ALLOW_KVA);
 }
 
 /*

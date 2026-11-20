@@ -271,6 +271,9 @@ static struct samsung_dma_heap *__samsung_heap_add(struct device *dev, void *pri
 	if (of_property_read_bool(dev->of_node, "dma-heap,video_aligned"))
 		flags |= DMA_HEAP_FLAG_VIDEO_ALIGNED;
 
+	if (of_property_read_bool(dev->of_node, "dma-heap,allow_kva"))
+		flags |= DMA_HEAP_FLAG_ALLOW_KVA;
+
 	if (of_property_read_bool(dev->of_node, "dma-heap,untouchable"))
 		flags |= DMA_HEAP_FLAG_UNTOUCHABLE | DMA_HEAP_FLAG_PROTECTED;
 
