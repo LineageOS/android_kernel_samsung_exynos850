@@ -983,6 +983,8 @@ static int __init hpa_dma_heap_init(void)
 			return PTR_ERR(dma_heap);
 
 		hpa_heaps[i].dma_heap = dma_heap;
+		/* see __samsung_heap_add() */
+		arch_setup_dma_ops(dma_heap_get_dev(dma_heap), 0, 1ULL << 36, NULL, false);
 		dma_coerce_mask_and_coherent(dma_heap_get_dev(dma_heap), DMA_BIT_MASK(36));
 
 		pr_info("Registered %s dma-heap successfully\n", hpa_heaps[i].name);

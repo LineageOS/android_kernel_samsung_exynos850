@@ -312,6 +312,14 @@ static struct samsung_dma_heap *__samsung_heap_add(struct device *dev, void *pri
 	if (IS_ERR(heap->dma_heap))
 		return heap;
 
+	/*
+	 * arm64 on this kernel gives devices without arch_setup_dma_ops() the
+	 * dummy dma ops that fail every mapping and skip every cache operation.
+	 * The heap device does the cache maintenance of the buffers and maps
+	 * them for System MMU masters, so set it up as a non-coherent device
+	 * that reaches the whole physical address space like ION did.
+	 */
+	arch_setup_dma_ops(dma_heap_get_dev(heap->dma_heap), 0, 1ULL << 36, NULL, false);
 	dma_coerce_mask_and_coherent(dma_heap_get_dev(heap->dma_heap), DMA_BIT_MASK(36));
 
 	pr_info("Registered %s dma-heap successfully\n", heap_name);
