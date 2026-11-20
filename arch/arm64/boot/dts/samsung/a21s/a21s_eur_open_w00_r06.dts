@@ -3670,34 +3670,6 @@
 		target = <0xffffffff>;
 
 		__overlay__ {
-
-			secure_camera {
-				compatible = "exynos9820-ion";
-				ion,heapname = "secure_camera_heap";
-				reg = <0x00 0xe1900000 0x1520000>;
-				ion,secure;
-				ion,untouchable;
-				ion,protection_id = <0x0b>;
-				ion,alignment = <0x10000>;
-			};
-
-			camera_contig {
-				compatible = "exynos9820-ion";
-				ion,heapname = "camera_heap";
-				reg = <0x00 0xdb900000 0xb00000>;
-				ion,secure;
-				ion,protection_id = <0x0a>;
-				ion,alignment = <0x10000>;
-			};
-
-			secure_camera_ext {
-				compatible = "exynos9820-ion";
-				ion,heapname = "secure_camera_heap_drc";
-				reg = <0x00 0xe2e20000 0x780000>;
-				ion,secure;
-				ion,protection_id = <0x0e>;
-				ion,alignment = <0x10000>;
-			};
 		};
 	};
 

@@ -979,91 +979,98 @@
 		ranges;
 		phandle = <0xd4>;
 
-		ion_crypto {
-			compatible = "exynos9820-ion";
+		crypto {
+			compatible = "shared-dma-pool";
 			size = <0x2000000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "crypto_heap";
-			ion,reusable;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x200>;
 		};
 
-		ion_video_fw {
-			compatible = "exynos9820-ion";
+		vfw {
+			compatible = "shared-dma-pool";
 			size = <0x400000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "vfw_heap";
-			ion,secure;
-			ion,reusable;
-			ion,protection_id = <0x02>;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x201>;
 		};
 
-		ion_video_stream {
-			compatible = "exynos9820-ion";
+		vstream {
+			compatible = "shared-dma-pool";
 			size = <0x1c00000>;
 			alloc-ranges = <0x00 0x40000000 0xc0000000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "vstream_heap";
-			ion,secure;
-			ion,reusable;
-			ion,protection_id = <0x03>;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x202>;
 		};
 
-		ion_video_frame {
-			compatible = "exynos9820-ion";
+		vframe {
+			compatible = "shared-dma-pool";
 			size = <0x5800000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "vframe_heap";
-			ion,secure;
-			ion,reusable;
-			ion,protection_id = <0x05>;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x203>;
 		};
 
-		ion_video_scaler {
-			compatible = "exynos9820-ion";
+		vscaler {
+			compatible = "shared-dma-pool";
 			size = <0x2800000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "vscaler_heap";
-			ion,secure;
-			ion,reusable;
-			ion,protection_id = <0x06>;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x204>;
 		};
 
-		ion_video_nfw {
-			compatible = "exynos9820-ion";
+		vnfw {
+			compatible = "shared-dma-pool";
 			size = <0x400000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "vnfw_heap";
-			ion,reusable;
-			ion,protection_id = <0x07>;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x205>;
 		};
 
-		ion_ext_ui {
-			compatible = "exynos9820-ion";
+		ext_ui {
+			compatible = "shared-dma-pool";
 			size = <0x2000000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "ext_ui";
-			ion,secure;
-			ion,reusable;
-			ion,protection_id = <0x0d>;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x206>;
 		};
 
-		ion_tui_buf {
-			compatible = "exynos9820-ion";
+		tui {
+			compatible = "shared-dma-pool";
 			size = <0xc00000>;
 			alloc-ranges = <0x00 0x40000000 0xc0000000>;
 			alignment = <0x00 0x400000>;
-			ion,heapname = "tui_buf";
-			ion,secure;
-			ion,reusable;
-			ion,protection_id = <0x14>;
-			ion,alignment = <0x10000>;
+			reusable;
+			phandle = <0x207>;
+		};
+
+		secure_camera {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xe1900000 0x1520000>;
+			alignment = <0x00 0x10000>;
+			phandle = <0x208>;
+		};
+
+		camera_uncached {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xdb900000 0x400000>;
+			alignment = <0x00 0x10000>;
+			phandle = <0x20b>;
+		};
+
+		camera_contig {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xdbd00000 0x700000>;
+			alignment = <0x00 0x10000>;
+			phandle = <0x209>;
+		};
+
+		secure_camera_ext {
+			compatible = "shared-dma-pool";
+			reg = <0x00 0xe2e20000 0x780000>;
+			alignment = <0x00 0x10000>;
+			phandle = <0x20a>;
 		};
 
 		el3mon_reserve {
@@ -1839,6 +1846,117 @@
 	system_dma_heap {
 		compatible = "samsung,dma-heap-system";
 		dma-heap,name = "system";
+	};
+
+	crypto_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x200>;
+		dma-heap,name = "crypto";
+	};
+
+	video_fw_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x201>;
+		dma-heap,name = "vfw";
+		dma-heap,secure;
+		dma-heap,allow_kva;
+		dma-heap,protection_id = <0x02>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	video_stream_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x202>;
+		dma-heap,name = "system-secure-vstream";
+		dma-heap,secure;
+		dma-heap,protection_id = <0x03>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	video_frame_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x203>;
+		dma-heap,name = "vframe";
+		dma-heap,secure;
+		dma-heap,protection_id = <0x05>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	video_scaler_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x204>;
+		dma-heap,name = "vscaler";
+		dma-heap,secure;
+		dma-heap,protection_id = <0x06>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	video_nfw_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x205>;
+		dma-heap,name = "vnfw";
+		dma-heap,alignment = <0x10000>;
+	};
+
+	ext_ui_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x206>;
+		dma-heap,name = "ext_ui";
+		dma-heap,secure;
+		dma-heap,protection_id = <0x0d>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	tui_dma_heap {
+		compatible = "samsung,dma-heap-cma";
+		memory-region = <0x207>;
+		dma-heap,name = "tui";
+		dma-heap,secure;
+		dma-heap,protection_id = <0x14>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	secure_camera_dma_heap {
+		compatible = "samsung,dma-heap-carveout";
+		memory-region = <0x208>;
+		dma-heap,name = "secure_camera";
+		dma-heap,untouchable;
+		dma-heap,secure;
+		dma-heap,protection_id = <0x0b>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	camera_contig_dma_heap {
+		compatible = "samsung,dma-heap-carveout";
+		memory-region = <0x209>;
+		dma-heap,name = "camera_heap";
+		dma-heap,secure;
+		dma-heap,allow_kva;
+		dma-heap,protection_id = <0x0a>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	secure_camera_ext_dma_heap {
+		compatible = "samsung,dma-heap-carveout";
+		memory-region = <0x20a>;
+		dma-heap,name = "secure_camera_heap_drc";
+		dma-heap,secure;
+		dma-heap,allow_kva;
+		dma-heap,protection_id = <0x0e>;
+		dma-heap,alignment = <0x10000>;
+	};
+
+	camera_uncached_dma_heap {
+		compatible = "samsung,dma-heap-carveout";
+		memory-region = <0x20b>;
+		dma-heap,name = "camera";
+		dma-heap,alignment = <0x10000>;
+	};
+
+	secure-iova-domain {
+		#address-cells = <0x01>;
+		#size-cells = <0x01>;
+		domain-ranges = <0x80000000 0x60000000>;
 	};
 
 	usi@10021020 {
