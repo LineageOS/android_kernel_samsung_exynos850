@@ -22,7 +22,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/exynos_iovmm.h>
 #include <linux/smc.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 
 #include <media/v4l2-ioctl.h>
 #include <media/m2m1shot.h>
@@ -1866,11 +1866,9 @@ static void free_intermediate_frame(struct sc_ctx *ctx)
 
 	for(i = 0; i < 3; i++) {
 		if (ctx->i_frame->src_addr.ioaddr[i])
-			ion_iovmm_unmap(ctx->i_frame->attachment[i],
-					ctx->i_frame->src_addr.ioaddr[i]);
+			samsung_dma_buf_iova_unmap(ctx->i_frame->attachment[i], ctx->i_frame->src_addr.ioaddr[i]);
 		if (ctx->i_frame->dst_addr.ioaddr[i])
-			ion_iovmm_unmap(ctx->i_frame->attachment[i],
-					ctx->i_frame->dst_addr.ioaddr[i]);
+			samsung_dma_buf_iova_unmap(ctx->i_frame->attachment[i], ctx->i_frame->dst_addr.ioaddr[i]);
 		if (ctx->i_frame->dma_buf[i]) {
 			dma_buf_unmap_attachment(ctx->i_frame->attachment[i],
 					ctx->i_frame->sgt[i], DMA_BIDIRECTIONAL);
@@ -1896,10 +1894,9 @@ static void destroy_intermediate_frame(struct sc_ctx *ctx)
 
 static bool alloc_intermediate_buffer(struct device *dev,
 				      struct sc_int_frame *iframe, int i,
-				      size_t size, const char *heapname,
-				      unsigned long flags)
+				      size_t size, const char *heapname)
 {
-	iframe->dma_buf[i] = ion_alloc_dmabuf(heapname, size, flags);
+	iframe->dma_buf[i] = samsung_dma_heap_alloc(heapname, size);
 	if (IS_ERR(iframe->dma_buf[i])) {
 		dev_err(dev,
 			"Failed to allocate intermediate buffer.%d (err %ld)",
@@ -1923,8 +1920,7 @@ static bool alloc_intermediate_buffer(struct device *dev,
 		goto err_map;
 	}
 
-	iframe->src_addr.ioaddr[i] = ion_iovmm_map(iframe->attachment[i], 0,
-						   size, DMA_TO_DEVICE, 0);
+	iframe->src_addr.ioaddr[i] = samsung_dma_buf_iova_map(iframe->attachment[i]);
 	if (IS_ERR_VALUE(iframe->src_addr.ioaddr[i])) {
 		dev_err(dev,
 			"Failed to allocate iova of buffer.%d (err %pa)",
@@ -1932,8 +1928,7 @@ static bool alloc_intermediate_buffer(struct device *dev,
 		goto err_src_map;
 	}
 
-	iframe->dst_addr.ioaddr[i] = ion_iovmm_map(iframe->attachment[i], 0,
-						   size, DMA_FROM_DEVICE, 0);
+	iframe->dst_addr.ioaddr[i] = samsung_dma_buf_iova_map(iframe->attachment[i]);
 	if (IS_ERR_VALUE(iframe->dst_addr.ioaddr[i])) {
 		dev_err(dev,
 			"Failed to allocate iova of buffer.%d (err %pa)",
@@ -1945,7 +1940,7 @@ static bool alloc_intermediate_buffer(struct device *dev,
 
 err_dst_map:
 	iframe->dst_addr.ioaddr[i] = 0;
-	ion_iovmm_unmap(iframe->attachment[i], iframe->src_addr.ioaddr[i]);
+	samsung_dma_buf_iova_unmap(iframe->attachment[i], iframe->src_addr.ioaddr[i]);
 err_src_map:
 	iframe->src_addr.ioaddr[i] = 0;
 	dma_buf_unmap_attachment(iframe->attachment[i], iframe->sgt[i],
@@ -1966,7 +1961,6 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 	struct sc_frame *frame;
 	struct sc_dev *sc = ctx->sc_dev;
 	const char *heapname;
-	unsigned long flag;
 	int i;
 
 	frame = &ctx->i_frame->frame;
@@ -1989,13 +1983,10 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 
 	sc_calc_intbufsize(sc, ctx->i_frame);
 
-	if(test_bit(CTX_INT_FRAME_CP, &sc->state)) {
-		heapname = "vscaler_heap";
-		flag = ION_FLAG_PROTECTED;
-	} else {
-		heapname = "ion_system_heap";
-		flag = 0;
-	}
+	if (test_bit(CTX_INT_FRAME_CP, &sc->state))
+		heapname = "vscaler-secure";
+	else
+		heapname = "system-uncached";
 
 	for (i = 0; i < SC_MAX_PLANES; i++) {
 		if (!frame->addr.size[i])
@@ -2003,7 +1994,7 @@ static bool initialize_initermediate_frame(struct sc_ctx *ctx)
 
 		if (!alloc_intermediate_buffer(sc->dev, ctx->i_frame, i,
 					       frame->addr.size[i],
-					       heapname, flag))
+					       heapname))
 			goto err_ion_alloc;
 
 		frame->addr.ioaddr[i] = ctx->i_frame->dst_addr.ioaddr[i];
