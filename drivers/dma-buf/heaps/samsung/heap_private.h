@@ -138,6 +138,15 @@ static inline bool dma_heap_flags_untouchable(unsigned long flags)
 	return !!(flags & DMA_HEAP_FLAG_UNTOUCHABLE);
 }
 
+static inline bool dma_heap_dev_has_dma_ops(struct device *dev)
+{
+#ifdef CONFIG_ARM64
+	return get_dma_ops(dev) != &dummy_dma_ops;
+#else
+	return true;
+#endif
+}
+
 static inline bool dma_heap_skip_cache_ops(unsigned long flags)
 {
 	return dma_heap_flags_protected(flags) || dma_heap_flags_uncached(flags);

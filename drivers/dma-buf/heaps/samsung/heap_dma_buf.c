@@ -61,6 +61,15 @@ static struct dma_iovm_map *dma_iova_create(struct dma_buf_attachment *a)
 	if (dma_heap_dev_has_iovmm(a->dev)) {
 		iovm_map->map_dev = dma_heap_get_dev(buffer->heap->dma_heap);
 		iovm_map->domain = get_domain_from_dev(a->dev);
+	} else if (!dma_heap_dev_has_dma_ops(a->dev)) {
+		/*
+		 * Misc/char devices (e.g. s5p-smem converting an fd to a
+		 * physical address for the secure world) never went through
+		 * arch_setup_dma_ops() and only have dummy_dma_ops, so every
+		 * map would fail. ION handed them the physical sg_table, do
+		 * the same by mapping with the heap device.
+		 */
+		iovm_map->map_dev = dma_heap_get_dev(buffer->heap->dma_heap);
 	} else {
 		iovm_map->map_dev = a->dev;
 	}
