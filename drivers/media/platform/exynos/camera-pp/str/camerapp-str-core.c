@@ -17,7 +17,7 @@
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
 #include <linux/exynos_iovmm.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 
 #include "camerapp-str-hw.h"
 #include "camerapp-str-core.h"
@@ -99,7 +99,7 @@ static void _str_ion_init(struct device *dev, struct str_ion_ctx *ion_ctx)
 {
 	ion_ctx->dev = dev;
 	ion_ctx->align = SZ_4K;
-	ion_ctx->flags = ION_FLAG_CACHED;
+	ion_ctx->flags = 0;
 	mutex_init(&ion_ctx->lock);
 }
 
@@ -111,7 +111,6 @@ static void _str_ion_deinit(struct str_ion_ctx *ion_ctx)
 struct str_priv_buf *str_ion_alloc(struct str_ion_ctx *ion_ctx, size_t size)
 {
 	int ret = 0;
-	const char *heapname = "ion_system_heap";
 	struct str_priv_buf *buf;
 
 	buf = vzalloc(sizeof(*buf));
@@ -122,7 +121,7 @@ struct str_priv_buf *str_ion_alloc(struct str_ion_ctx *ion_ctx, size_t size)
 	buf->direction = DMA_BIDIRECTIONAL;
 	buf->ion_ctx = ion_ctx;
 
-	buf->dma_buf = ion_alloc_dmabuf(heapname, buf->size, ion_ctx->flags);
+	buf->dma_buf = samsung_dma_heap_alloc("system", buf->size);
 	if (IS_ERR(buf->dma_buf)) {
 		ret = -ENOMEM;
 		goto err_alloc;
@@ -141,7 +140,7 @@ struct str_priv_buf *str_ion_alloc(struct str_ion_ctx *ion_ctx, size_t size)
 	}
 
 	mutex_lock(&ion_ctx->lock);
-	buf->iova = ion_iovmm_map(buf->dma_attach, 0, buf->size, buf->direction, 0);
+	buf->iova = samsung_dma_buf_iova_map(buf->dma_attach);
 	if (IS_ERR_VALUE(buf->iova)) {
 		ret = (int) buf->iova;
 		mutex_unlock(&ion_ctx->lock);
@@ -173,7 +172,7 @@ void str_ion_free(struct str_priv_buf *buf)
 
 	mutex_lock(&ion_ctx->lock);
 	if (buf->iova)
-		ion_iovmm_unmap(buf->dma_attach, buf->iova);
+		samsung_dma_buf_iova_unmap(buf->dma_attach, buf->iova);
 	mutex_unlock(&ion_ctx->lock);
 
 	dma_buf_unmap_attachment(buf->dma_attach, buf->sgt, buf->direction);
