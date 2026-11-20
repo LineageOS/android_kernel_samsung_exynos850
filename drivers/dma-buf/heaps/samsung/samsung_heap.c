@@ -508,7 +508,11 @@ static void __exit samsung_dma_heap_exit(void)
 	chunk_dma_heap_exit();
 }
 
-module_init(samsung_dma_heap_init);
+/*
+ * Drivers such as decon allocate from the heaps in their probe, so register
+ * the heaps before device initcalls like ION used to.
+ */
+subsys_initcall_sync(samsung_dma_heap_init);
 module_exit(samsung_dma_heap_exit);
 MODULE_DESCRIPTION("DMA-BUF Samsung Heap");
 MODULE_LICENSE("GPL v2");
