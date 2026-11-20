@@ -62,7 +62,7 @@
 #include "hardware/is-hw-control.h"
 
 #if defined(SECURE_CAMERA_FACE)
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 #endif
 
 #if defined(CONFIG_SCHED_EHMP)
@@ -662,7 +662,7 @@ static int is_resourcemgr_alloc_secure_mem(struct is_resourcemgr *resourcemgr)
 	/* 3aa/isp internal DMA buffer */
 	minfo->pb_taaisp_s = CALL_PTR_MEMOP(mem, alloc, mem->default_ctx,
 				TAAISP_DMA_SIZE, "camera_heap",
-				ION_FLAG_CACHED | ION_FLAG_PROTECTED);
+				IS_MEM_FLAG_CACHED | IS_MEM_FLAG_PROTECTED);
 	if (IS_ERR_OR_NULL(minfo->pb_taaisp_s)) {
 		err("failed to allocate buffer for TAAISP_DMA_S");
 		return -ENOMEM;
@@ -675,11 +675,11 @@ static int is_resourcemgr_alloc_secure_mem(struct is_resourcemgr *resourcemgr)
 #if defined(SECURE_CAMERA_USE_EXT_HEAP)
 	minfo->pb_medrc_s = CALL_PTR_MEMOP(mem, alloc, mem->default_ctx,
 			MEDRC_DMA_SIZE, "secure_camera_heap_drc",
-			ION_FLAG_CACHED | ION_FLAG_PROTECTED);
+			IS_MEM_FLAG_CACHED | IS_MEM_FLAG_PROTECTED);
 #else
 	minfo->pb_medrc_s = CALL_PTR_MEMOP(mem, alloc, mem->default_ctx,
-				MEDRC_DMA_SIZE, "secure_camera_heap",
-				ION_FLAG_CACHED | ION_FLAG_PROTECTED);
+				MEDRC_DMA_SIZE, "secure_camera",
+				IS_MEM_FLAG_CACHED | IS_MEM_FLAG_PROTECTED);
 #endif
 	if (IS_ERR_OR_NULL(minfo->pb_medrc_s)) {
 		CALL_VOID_BUFOP(minfo->pb_taaisp_s, free, minfo->pb_taaisp_s);

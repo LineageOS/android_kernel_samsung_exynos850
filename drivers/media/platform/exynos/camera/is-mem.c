@@ -31,7 +31,7 @@
 #include <linux/of.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-buf-container.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 #include <asm/cacheflush.h>
 #include <media/videobuf2-memops.h>
 
@@ -41,7 +41,6 @@
 #include <linux/exynos_iovmm.h>
 
 #if defined(CONFIG_VIDEOBUF2_DMA_SG)
-#define IS_IOMMU_PROP	(IOMMU_READ | IOMMU_WRITE)
 
 struct vb2_dma_sg_buf {
 	struct device			*dev;
@@ -146,7 +145,6 @@ static long is_vb2_dma_sg_remap_attr(struct is_vb2_buf *vbuf, int attr)
 	struct vb2_dma_sg_buf *buf;
 	unsigned int plane;
 	long ret;
-	int ioprot = IS_IOMMU_PROP;
 
 	for (plane = 0; plane < vb->num_planes; ++plane) {
 		buf = vb->planes[plane].mem_priv;
@@ -159,14 +157,10 @@ static long is_vb2_dma_sg_remap_attr(struct is_vb2_buf *vbuf, int attr)
 		}
 
 		if ((vbuf->dva[plane] == 0) || IS_ERR_VALUE(vbuf->dva[plane])) {
-			if (device_get_dma_attr(buf->dev) == DEV_DMA_COHERENT)
-				ioprot |= IOMMU_CACHE;
-
-			vbuf->dva[plane] = ion_iovmm_map_attr(buf->db_attach, 0, buf->size,
-					DMA_BIDIRECTIONAL, ioprot, attr);
+			vbuf->dva[plane] = samsung_dma_buf_iova_map(buf->db_attach);
 			if (IS_ERR_VALUE(vbuf->dva[plane])) {
 				ret = vbuf->dva[plane];
-				pr_err("Error from ion_iovmm_map(): %ld\n", ret);
+				pr_err("Error from samsung_dma_buf_iova_map(): %ld\n", ret);
 				goto err_map_remap;
 			}
 		}
@@ -182,7 +176,7 @@ err_get_sgt:
 	while (plane-- > 0) {
 		buf = vb->planes[plane].mem_priv;
 
-		ion_iovmm_unmap_attr(buf->db_attach, vbuf->dva[plane], attr);
+		samsung_dma_buf_iova_unmap(buf->db_attach, vbuf->dva[plane]);
 		dma_buf_unmap_attachment(buf->db_attach, vbuf->sgt[plane], buf->dma_dir);
 		vbuf->dva[plane] = 0;
 	}
@@ -199,7 +193,7 @@ void is_vb2_dma_sg_unremap_attr(struct is_vb2_buf *vbuf, int attr)
 	for (plane = 0; plane < vb->num_planes; ++plane) {
 		buf = vb->planes[plane].mem_priv;
 
-		ion_iovmm_unmap_attr(buf->db_attach, vbuf->dva[plane], attr);
+		samsung_dma_buf_iova_unmap(buf->db_attach, vbuf->dva[plane]);
 		dma_buf_unmap_attachment(buf->db_attach, vbuf->sgt[plane], buf->dma_dir);
 		vbuf->dva[plane] = 0;
 	}
@@ -346,8 +340,7 @@ static long is_dbufcon_map(struct is_vb2_buf *vbuf)
 	long ret;
 
 	for (i = 0; i < vbuf->num_merged_dbufs; i++) {
-		vbuf->dva[i] = ion_iovmm_map(vbuf->atch[i], 0, 0,
-				DMA_BIDIRECTIONAL, IS_IOMMU_PROP);
+		vbuf->dva[i] = samsung_dma_buf_iova_map(vbuf->atch[i]);
 		if (IS_ERR_VALUE(vbuf->dva[i])) {
 			err("failed to map dmabuf: %d", i);
 			ret = vbuf->dva[i];
@@ -361,7 +354,7 @@ err_map_dbuf:
 	vbuf->dva[i] = 0;
 
 	while (i-- > 0) {
-		ion_iovmm_unmap(vbuf->atch[i], vbuf->dva[i]);
+		samsung_dma_buf_iova_unmap(vbuf->atch[i], vbuf->dva[i]);
 		vbuf->dva[i] = 0;
 	}
 
@@ -373,7 +366,7 @@ static void is_dbufcon_unmap(struct is_vb2_buf *vbuf)
 	int i;
 
 	for (i = 0; i < vbuf->num_merged_dbufs; i++) {
-		ion_iovmm_unmap(vbuf->atch[i], vbuf->dva[i]);
+		samsung_dma_buf_iova_unmap(vbuf->atch[i], vbuf->dva[i]);
 		vbuf->dva[i] = 0;
 	}
 }
@@ -418,7 +411,7 @@ static void is_ion_free(struct is_priv_buf *pbuf)
 	alloc_ctx = pbuf->ctx;
 	mutex_lock(&alloc_ctx->lock);
 	if (pbuf->iova)
-		ion_iovmm_unmap(pbuf->attachment, pbuf->iova);
+		samsung_dma_buf_iova_unmap(pbuf->attachment, pbuf->iova);
 	mutex_unlock(&alloc_ctx->lock);
 
 	if (pbuf->kva)
@@ -512,7 +505,7 @@ static void *is_ion_init(struct platform_device *pdev)
 
 	ctx->dev = &pdev->dev;
 	ctx->alignment = SZ_4K;
-	ctx->flags = ION_FLAG_CACHED;
+	ctx->flags = IS_MEM_FLAG_CACHED;
 	mutex_init(&ctx->lock);
 
 	return ctx;
@@ -531,6 +524,7 @@ static struct is_priv_buf *is_ion_alloc(void *ctx,
 {
 	struct is_ion_ctx *alloc_ctx = ctx;
 	struct is_priv_buf *buf;
+	char name[32];
 	int ret = 0;
 
 	buf = vzalloc(sizeof(*buf));
@@ -539,8 +533,14 @@ static struct is_priv_buf *is_ion_alloc(void *ctx,
 
 	size = PAGE_ALIGN(size);
 
-	buf->dma_buf = ion_alloc_dmabuf(heapname ? heapname : "ion_system_heap",
-				size, flags ? flags : alloc_ctx->flags);
+	if (!flags)
+		flags = alloc_ctx->flags;
+
+	snprintf(name, sizeof(name), "%s%s", heapname ? heapname : "system",
+		 (flags & IS_MEM_FLAG_PROTECTED) ? "-secure" :
+		 (flags & IS_MEM_FLAG_CACHED) ? "" : "-uncached");
+
+	buf->dma_buf = samsung_dma_heap_alloc(name, size);
 	if (IS_ERR(buf->dma_buf)) {
 		ret = -ENOMEM;
 		goto err_alloc;
@@ -565,8 +565,7 @@ static struct is_priv_buf *is_ion_alloc(void *ctx,
 	buf->ops = &is_priv_buf_ops_ion;
 
 	mutex_lock(&alloc_ctx->lock);
-	buf->iova = ion_iovmm_map(buf->attachment, 0,
-				   buf->size, buf->direction, IS_IOMMU_PROP);
+	buf->iova = samsung_dma_buf_iova_map(buf->attachment);
 	if (IS_ERR_VALUE(buf->iova)) {
 		ret = (int)buf->iova;
 		mutex_unlock(&alloc_ctx->lock);

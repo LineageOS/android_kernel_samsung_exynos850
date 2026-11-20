@@ -100,6 +100,10 @@ struct is_priv_buf {
 #define call_buf_op(buf, op, args...)			\
 	((buf)->ops->op ? (buf)->ops->op((buf), args) : 0)
 
+/* flags of is_mem_ops.alloc(), 0 takes the allocator default */
+#define IS_MEM_FLAG_CACHED	(1 << 0)
+#define IS_MEM_FLAG_PROTECTED	(1 << 4)
+
 struct is_mem_ops {
 	void *(*init)(struct platform_device *pdev);
 	void (*cleanup)(void *ctx);

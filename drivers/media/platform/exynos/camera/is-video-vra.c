@@ -35,9 +35,8 @@
 #include "is-param.h"
 
 #if defined(CONVERT_BUFFER_SECURE_TO_NON_SECURE)
+#include <linux/dma-buf.h>
 #include <linux/smc.h>
-#include "../../../../staging/android/ion/ion.h"
-#include "../../../../staging/android/ion/ion_exynos.h"
 #endif
 
 const struct v4l2_file_operations is_vra_video_fops;
@@ -583,15 +582,30 @@ static int is_vra_video_g_ctrl(struct file *file, void *priv,
 }
 
 #if defined(CONVERT_BUFFER_SECURE_TO_NON_SECURE)
-static struct ion_buffer *ion_buffer_get(struct dma_buf *dmabuf)
+/* physical address of the first chunk of a physically contiguous dma-buf */
+static int is_vra_dmabuf_phys(struct dma_buf *dmabuf, phys_addr_t *paddr)
 {
-	if (!dmabuf)
-		return ERR_PTR(-EINVAL);
+	struct dma_buf_attachment *attachment;
+	struct sg_table *sgt;
+	int ret = 0;
 
-	if (dmabuf->ops != &ion_dma_buf_ops)
-		return ERR_PTR(-EINVAL);
+	attachment = dma_buf_attach(dmabuf, is_dev);
+	if (IS_ERR(attachment))
+		return PTR_ERR(attachment);
 
-	return (struct ion_buffer *)dmabuf->priv;
+	sgt = dma_buf_map_attachment(attachment, DMA_BIDIRECTIONAL);
+	if (IS_ERR(sgt)) {
+		ret = PTR_ERR(sgt);
+		goto err_map;
+	}
+
+	*paddr = sg_phys(sgt->sgl);
+
+	dma_buf_unmap_attachment(attachment, sgt, DMA_BIDIRECTIONAL);
+err_map:
+	dma_buf_detach(dmabuf, attachment);
+
+	return ret;
 }
 #endif
 
@@ -658,9 +672,6 @@ static int is_vra_video_s_ext_ctrl(struct file *file, void *priv,
 		{
 			struct secure_buffer_convert_info info;
 			struct dma_buf *s_dbuf, *n_dbuf;
-			struct ion_buffer *buffer;
-			struct sg_table *table;
-			struct page *page;
 			phys_addr_t s_paddr, n_paddr;
 			unsigned long s_size, n_size;
 
@@ -677,29 +688,12 @@ static int is_vra_video_s_ext_ctrl(struct file *file, void *priv,
 				return -EINVAL;
 			}
 
-			buffer = ion_buffer_get(s_dbuf);
-			if (IS_ERR_OR_NULL(buffer)) {
-				pr_err("failed to get buffer of s_dbuf");
+			if (is_vra_dmabuf_phys(s_dbuf, &s_paddr)) {
+				pr_err("failed to get physical address of s_dbuf");
 				ret = -EINVAL;
 				goto free_s_dbuf;
 			}
-
-			table = buffer->sg_table;
-			if (IS_ERR_OR_NULL(table)) {
-				pr_err("failed to get table of buffer");
-				ret = -EINVAL;
-				goto free_s_dbuf;
-			}
-
-			page = sg_page(table->sgl);
-			if (IS_ERR_OR_NULL(page)) {
-				pr_err("failed to get page of sgl");
-				ret = -EINVAL;
-				goto free_s_dbuf;
-			}
-
-			s_paddr = PFN_PHYS(page_to_pfn(page));
-			s_size = buffer->size;
+			s_size = s_dbuf->size;
 
 			mdbgv_vra("s_ext_ctrl CONVERT BUFFER secure: 0x%08x, size: 0x%08x, size: 0x%08x",
 					vctx, s_paddr, s_size, info.secure_buffer_size);
@@ -711,29 +705,12 @@ static int is_vra_video_s_ext_ctrl(struct file *file, void *priv,
 				goto free_s_dbuf;
 			}
 
-			buffer = ion_buffer_get(n_dbuf);
-			if (IS_ERR_OR_NULL(buffer)) {
-				pr_err("failed to get buffer of n_dbuf");
+			if (is_vra_dmabuf_phys(n_dbuf, &n_paddr)) {
+				pr_err("failed to get physical address of n_dbuf");
 				ret = -EINVAL;
 				goto free_n_dbuf;
 			}
-
-			table = buffer->sg_table;
-			if (IS_ERR_OR_NULL(table)) {
-				pr_err("failed to get table of buffer");
-				ret = -EINVAL;
-				goto free_n_dbuf;
-			}
-
-			page = sg_page(table->sgl);
-			if (IS_ERR_OR_NULL(page)) {
-				pr_err("failed to get page of sgl");
-				ret = -EINVAL;
-				goto free_n_dbuf;
-			}
-
-			n_paddr = PFN_PHYS(page_to_pfn(page));
-			n_size = buffer->size;
+			n_size = n_dbuf->size;
 
 			mdbgv_vra("s_ext_ctrl CONVERT BUFFER non-secure: 0x%08x, size: 0x%08x, size: 0x%08x",
 					vctx, n_paddr, n_size, info.non_secure_buffer_size);
