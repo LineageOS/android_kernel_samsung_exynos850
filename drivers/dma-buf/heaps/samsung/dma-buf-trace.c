@@ -19,6 +19,8 @@
 #include <linux/types.h>
 #include <linux/sort.h>
 
+#include <linux/exynos_iovmm.h>
+
 #include "heap_private.h"
 
 #if IS_ENABLED(CONFIG_EXYNOS_MEMORY_LOGGER)
@@ -254,12 +256,14 @@ void __show_dmabuf_trace_info(struct memlog_obj *obj)
 void show_dmabuf_dva(struct device *dev)
 {
 	struct dmabuf_trace_buffer *buffer;
-	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
+	struct iommu_domain *domain;
 	size_t mapped_size = 0;
 	int cnt = 0;
 
-	if (!dev_iommu_fwspec_get(dev))
+	if (!dma_heap_dev_has_iovmm(dev))
 		return;
+
+	domain = get_domain_from_dev(dev);
 
 	mutex_lock(&trace_lock);
 	pr_info("The %s domain device virtual address list: (kbsize@base)\n", dev_name(dev));
@@ -271,12 +275,12 @@ void show_dmabuf_dva(struct device *dev)
 
 		mutex_lock(&samsung_dma_buffer->lock);
 		list_for_each_entry(iovm_map, &samsung_dma_buffer->attachments, list) {
-			if (domain != iommu_get_domain_for_dev(iovm_map->dev))
+			if (domain != iovm_map->domain || !iovm_map->iova)
 				continue;
 			mapped_size += dmabuf->size;
 
-			pr_cont("%8zu@%#5lx ", dmabuf->size >> 10,
-				sg_dma_address(iovm_map->table.sgl) >> 12);
+			pr_cont("%8zu@%#5llx ", dmabuf->size >> 10,
+				(u64)iovm_map->iova >> 12);
 			if (cnt++ & 16) {
 				pr_cont("\n");
 				cnt = 0;

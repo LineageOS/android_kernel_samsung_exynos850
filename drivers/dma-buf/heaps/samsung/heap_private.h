@@ -24,12 +24,27 @@
 #include "secure_buffer.h"
 #include "../deferred-free-helper.h"
 
+/*
+ * struct dma_iovm_map - per-domain mapping of a buffer
+ * @dev:     device that created the mapping
+ * @map_dev: device the sg_table is dma-mapped with. For a master behind an
+ *           Exynos System MMU this is the heap device, so the sg_table carries
+ *           physical addresses like ION buffers used to.
+ * @domain:  Exynos IOVMM domain of @dev, NULL if @dev has no System MMU
+ * @iova:    System MMU address of the buffer in @domain, created on demand by
+ *           samsung_dma_buf_iova_map()
+ * @prot:    IOMMU prot used for @iova
+ */
 struct dma_iovm_map {
 	struct list_head list;
 	struct device *dev;
+	struct device *map_dev;
+	struct iommu_domain *domain;
 	struct sg_table table;
 	unsigned long attrs;
 	unsigned int mapcnt;
+	dma_addr_t iova;
+	int prot;
 };
 
 struct dmabuf_trace_buffer;
@@ -139,11 +154,12 @@ static inline bool dma_heap_flags_kva_is_allowed(unsigned long flags)
 }
 
 /*
- * Use pre-mapped protected device virtual address instead of dma-mapping.
+ * Masters behind an Exynos System MMU get their device virtual address from
+ * the Exynos IOVMM instead of from the dma-mapping API on this kernel.
  */
-static inline bool dma_heap_tzmp_buffer(struct device *dev, unsigned long flags)
+static inline bool dma_heap_dev_has_iovmm(struct device *dev)
 {
-	return dma_heap_flags_protected(flags) && !!dev_iommu_fwspec_get(dev);
+	return IS_ENABLED(CONFIG_EXYNOS_IOVMM) && !!dev->archdata.iommu;
 }
 
 void *samsung_dma_buffer_protect(struct samsung_dma_heap *heap, unsigned int chunk_size,
