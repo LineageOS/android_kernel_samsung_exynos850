@@ -480,7 +480,14 @@ static void *samsung_heap_do_vmap(struct samsung_dma_buffer *buffer)
 		return ERR_PTR(-EACCES);
 	}
 
-	pgprot = dma_heap_flags_uncached(buffer->flags) ?
+	/*
+	 * Protected buffers are never cache maintained (see
+	 * samsung_dma_buf_cached()), and dirty lines written back after the
+	 * secure world locks the memory are TZASC violations. Map them
+	 * non-cacheable so CPU writes (e.g. MFC loading its DRM firmware
+	 * before SMC_DRM_PPMP_MFCFW_PROT) reach memory immediately.
+	 */
+	pgprot = dma_heap_skip_cache_ops(buffer->flags) ?
 		pgprot_writecombine(PAGE_KERNEL) : PAGE_KERNEL;
 
 	for_each_sgtable_page(table, &piter, 0) {
