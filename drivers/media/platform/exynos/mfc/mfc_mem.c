@@ -90,23 +90,20 @@ void mfc_mem_cleanup_user_shared_handle(struct mfc_ctx *ctx,
 int mfc_mem_ion_alloc(struct mfc_dev *dev,
 		struct mfc_special_buf *special_buf)
 {
-	int flag = ION_FLAG_NOZEROED;
 	const char *heapname;
 
 	switch (special_buf->buftype) {
 	case MFCBUF_NORMAL:
-		heapname = "ion_system_heap";
+		heapname = "system-uncached";
 		break;
 	case MFCBUF_NORMAL_FW:
-		heapname = "vnfw_heap";
+		heapname = "vnfw-uncached";
 		break;
 	case MFCBUF_DRM:
-		heapname = "vframe_heap";
-		flag |= ION_FLAG_PROTECTED;
+		heapname = "vframe-secure";
 		break;
 	case MFCBUF_DRM_FW:
-		heapname = "vfw_heap";
-		flag |= ION_FLAG_PROTECTED;
+		heapname = "vfw-secure";
 		break;
 	default:
 		heapname = "unknown";
@@ -114,8 +111,7 @@ int mfc_mem_ion_alloc(struct mfc_dev *dev,
 				special_buf->buftype, heapname);
 		return -EINVAL;
 	}
-	special_buf->dma_buf =
-			ion_alloc_dmabuf(heapname, special_buf->size, flag);
+	special_buf->dma_buf = samsung_dma_heap_alloc(heapname, special_buf->size);
 	if (IS_ERR(special_buf->dma_buf)) {
 		mfc_err_dev("Failed to allocate buffer (err %ld)\n",
 				PTR_ERR(special_buf->dma_buf));
@@ -140,8 +136,7 @@ int mfc_mem_ion_alloc(struct mfc_dev *dev,
 		goto err_map;
 	}
 
-	special_buf->daddr = ion_iovmm_map(special_buf->attachment, 0,
-			special_buf->size, DMA_BIDIRECTIONAL, 0);
+	special_buf->daddr = samsung_dma_buf_iova_map(special_buf->attachment);
 	if (IS_ERR_VALUE(special_buf->daddr)) {
 		mfc_err_dev("Failed to allocate iova (err 0x%p)\n",
 				&special_buf->daddr);
@@ -160,7 +155,7 @@ int mfc_mem_ion_alloc(struct mfc_dev *dev,
 	return 0;
 err_vaddr:
 	special_buf->vaddr = NULL;
-	ion_iovmm_unmap(special_buf->attachment, special_buf->daddr);
+	samsung_dma_buf_iova_unmap(special_buf->attachment, special_buf->daddr);
 
 err_iovmm:
 	special_buf->daddr = 0;
@@ -183,7 +178,7 @@ void mfc_mem_ion_free(struct mfc_dev *dev,
 	if (special_buf->vaddr)
 		dma_buf_vunmap(special_buf->dma_buf, special_buf->vaddr);
 	if (special_buf->daddr)
-		ion_iovmm_unmap(special_buf->attachment, special_buf->daddr);
+		samsung_dma_buf_iova_unmap(special_buf->attachment, special_buf->daddr);
 	if (special_buf->sgt)
 		dma_buf_unmap_attachment(special_buf->attachment,
 					 special_buf->sgt, DMA_BIDIRECTIONAL);
@@ -207,7 +202,7 @@ void mfc_bufcon_put_daddr(struct mfc_ctx *ctx, struct mfc_buf *mfc_buf, int plan
 		if (mfc_buf->addr[i][plane]) {
 			mfc_debug(4, "[BUFCON] put batch buf addr[%d][%d]: 0x%08llx\n",
 					i, plane, mfc_buf->addr[i][plane]);
-			ion_iovmm_unmap(mfc_buf->attachments[i][plane], mfc_buf->addr[i][plane]);
+			samsung_dma_buf_iova_unmap(mfc_buf->attachments[i][plane], mfc_buf->addr[i][plane]);
 		}
 		if (mfc_buf->attachments[i][plane])
 			dma_buf_detach(mfc_buf->dmabufs[i][plane], mfc_buf->attachments[i][plane]);
@@ -262,8 +257,7 @@ int mfc_bufcon_get_daddr(struct mfc_ctx *ctx, struct mfc_buf *mfc_buf,
 			goto err_get_daddr;
 		}
 
-		mfc_buf->addr[j][plane] = ion_iovmm_map(mfc_buf->attachments[i][plane], 0,
-				raw->plane_size[plane], DMA_BIDIRECTIONAL, 0);
+		mfc_buf->addr[j][plane] = samsung_dma_buf_iova_map(mfc_buf->attachments[i][plane]);
 		if (IS_ERR_VALUE(mfc_buf->addr[i][plane])) {
 			mfc_err_ctx("[BUFCON] Failed to allocate iova (err %pa)",
 					&mfc_buf->addr[i][plane]);
@@ -298,7 +292,7 @@ void mfc_put_iovmm(struct mfc_ctx *ctx, struct dpb_table *dpb, int num_planes, i
 		if (dpb[index].addr[i]) {
 			mfc_debug(2, "[IOVMM] index %d buf[%d] fd: %d addr: %#llx\n",
 					index, i, dpb[index].fd[i], dpb[index].addr[i]);
-			ion_iovmm_unmap(dpb[index].attach[i], dpb[index].addr[i]);
+			samsung_dma_buf_iova_unmap(dpb[index].attach[i], dpb[index].addr[i]);
 		}
 		if (dpb[index].attach[i])
 			dma_buf_detach(dpb[index].dmabufs[i], dpb[index].attach[i]);
@@ -324,11 +318,9 @@ void mfc_put_iovmm(struct mfc_ctx *ctx, struct dpb_table *dpb, int num_planes, i
 void mfc_get_iovmm(struct mfc_ctx *ctx, struct vb2_buffer *vb, struct dpb_table *dpb)
 {
 	struct mfc_dev *dev = ctx->dev;
-	struct vb2_queue *vq = vb->vb2_queue;
 	int i, mem_get_count = 0;
 	struct mfc_buf *mfc_buf = vb_to_mfc_buf(vb);
 	int index = mfc_buf->dpb_index;
-	int ioprot = IOMMU_READ	| IOMMU_WRITE;
 
 	if (dpb[index].mapcnt != 0) {
 		mfc_err_ctx("[IOVMM] DPB[%d] %#llx invalid mapcnt %d\n",
@@ -357,11 +349,7 @@ void mfc_get_iovmm(struct mfc_ctx *ctx, struct vb2_buffer *vb, struct dpb_table 
 			goto err_iovmm;
 		}
 
-		if (device_get_dma_attr(dev->device) == DEV_DMA_COHERENT)
-			ioprot |= IOMMU_CACHE;
-
-		dpb[index].addr[i] = ion_iovmm_map(dpb[index].attach[i],
-				0, ctx->raw_buf.plane_size[i], vq->dma_dir, ioprot);
+		dpb[index].addr[i] = samsung_dma_buf_iova_map(dpb[index].attach[i]);
 		if (IS_ERR_VALUE(dpb[index].addr[i])) {
 			mfc_err_ctx("[IOVMM] Failed to allocate iova (err 0x%p)\n",
 					&dpb[index].addr[i]);

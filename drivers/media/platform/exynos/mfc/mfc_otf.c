@@ -86,7 +86,6 @@ static int __mfc_otf_map_buf(struct mfc_ctx *ctx)
 	struct _otf_handle *handle = ctx->otf_handle;
 	struct _otf_buf_addr *buf_addr = &handle->otf_buf_addr;
 	struct _otf_buf_info *buf_info = &handle->otf_buf_info;
-	struct mfc_raw_info *raw = &ctx->raw_buf;
 	int i;
 
 	mfc_debug_enter();
@@ -102,8 +101,7 @@ static int __mfc_otf_map_buf(struct mfc_ctx *ctx)
 			buf_addr->otf_buf_attach[i] = 0;
 			return -EINVAL;
 		}
-		buf_addr->otf_daddr[i][0] = ion_iovmm_map(buf_addr->otf_buf_attach[i], 0,
-				raw->total_plane_size, DMA_BIDIRECTIONAL, 0);
+		buf_addr->otf_daddr[i][0] = samsung_dma_buf_iova_map(buf_addr->otf_buf_attach[i]);
 		if (IS_ERR_VALUE(buf_addr->otf_daddr[i][0])) {
 			mfc_err_ctx("[OTF] Failed to get daddr (0x%08llx)",
 					buf_addr->otf_daddr[i][0]);
@@ -137,7 +135,7 @@ static void __mfc_otf_unmap_buf(struct mfc_ctx *ctx)
 
 	for (i = 0; i < buf_info->buffer_count; i++) {
 		if (buf_addr->otf_daddr[i][0]) {
-			ion_iovmm_unmap(buf_addr->otf_buf_attach[i], buf_addr->otf_daddr[i][0]);
+			samsung_dma_buf_iova_unmap(buf_addr->otf_buf_attach[i], buf_addr->otf_daddr[i][0]);
 			buf_addr->otf_daddr[i][0] = 0;
 		}
 		if (buf_addr->otf_buf_attach[i]) {
