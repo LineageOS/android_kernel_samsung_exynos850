@@ -22,9 +22,9 @@
 #include <gpexbe_dmabuf.h>
 
 /* Uses */
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 
 bool gpexbe_dmabuf_is_cached(struct dma_buf *dmabuf)
 {
-	return ion_cached_dmabuf(dmabuf);
+	return samsung_dma_buf_cached(dmabuf);
 }
