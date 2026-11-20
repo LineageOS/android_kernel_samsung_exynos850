@@ -556,25 +556,31 @@ static void samsung_heap_dma_buf_release(struct dma_buf *dmabuf)
 	dma_heap_event_record(DMA_HEAP_EVENT_FREE, dmabuf, begin);
 }
 
+/*
+ * Drivers written for ION expect dma_buf_kmap() to return an address inside
+ * a virtually contiguous mapping of the whole buffer, and read structures
+ * that span several pages through it (e.g. the camera shot metadata).
+ * Back it with the refcounted whole-buffer vmap, like ION did.
+ */
 static void *samsung_heap_dma_buf_kmap(struct dma_buf *dmabuf, unsigned long page_num)
 {
 	struct samsung_dma_buffer *buffer = dmabuf->priv;
-	struct sg_page_iter piter;
+	void *vaddr;
 
-	if (dma_heap_flags_protected(buffer->flags) &&
-	    !dma_heap_flags_kva_is_allowed(buffer->flags))
+	if (page_num >= PAGE_ALIGN(buffer->len) / PAGE_SIZE)
 		return NULL;
 
-	for_each_sgtable_page(&buffer->sg_table, &piter, page_num)
-		return kmap(sg_page_iter_page(&piter));
+	vaddr = samsung_heap_vmap(dmabuf);
+	if (IS_ERR(vaddr))
+		return NULL;
 
-	return NULL;
+	return vaddr + page_num * PAGE_SIZE;
 }
 
 static void samsung_heap_dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long page_num,
 					void *vaddr)
 {
-	kunmap(virt_to_page(vaddr));
+	samsung_heap_vunmap(dmabuf, vaddr);
 }
 
 static int samsung_heap_dma_buf_get_flags(struct dma_buf *dmabuf, unsigned long *flags)
