@@ -19,7 +19,7 @@
 #include <linux/vmalloc.h>
 
 #include <linux/exynos_iovmm.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 #include <linux/dma-buf-container.h>
 
 #include <media/videobuf2-v4l2.h>
@@ -591,7 +591,6 @@ static int vb2_dma_sg_map_dmabuf(void *mem_priv, size_t size, int memflags)
 {
 	struct vb2_dma_sg_buf *buf = mem_priv;
 	struct sg_table *sgt;
-	int ioprot = IOMMU_READ	| IOMMU_WRITE;
 
 	if (WARN_ON(!buf->db_attach)) {
 		pr_err("trying to pin a non attached buffer\n");
@@ -621,16 +620,11 @@ static int vb2_dma_sg_map_dmabuf(void *mem_priv, size_t size, int memflags)
 	 */
 	if ((dmabuf_container_get_count(buf->db_attach->dmabuf) < 0) &&
 	    ((buf->iova == 0) || IS_ERR_VALUE(buf->iova))) {
-		if (!(memflags & VB2_DMA_SG_MEMFLAG_IOMMU_UNCACHED) &&
-		    (device_get_dma_attr(buf->dev) == DEV_DMA_COHERENT))
-			ioprot |= IOMMU_CACHE;
-
-		buf->iova = ion_iovmm_map(buf->db_attach, 0, buf->size,
-				      DMA_BIDIRECTIONAL, ioprot);
+		buf->iova = samsung_dma_buf_iova_map(buf->db_attach);
 		if (IS_ERR_VALUE(buf->iova)) {
 			dma_buf_unmap_attachment(buf->db_attach,
 						 sgt, buf->dma_dir);
-			pr_err("Error from ion_iovmm_map()=%pad\n", &buf->iova);
+			pr_err("Error from samsung_dma_buf_iova_map()=%pad\n", &buf->iova);
 			return (int)buf->iova;
 		}
 	}
@@ -679,7 +673,7 @@ static void vb2_dma_sg_detach_dmabuf(void *mem_priv)
 		vb2_dma_sg_unmap_dmabuf(buf, 0);
 
 	if (dmabuf_container_get_count(buf->db_attach->dmabuf) < 0)
-		ion_iovmm_unmap(buf->db_attach, buf->iova);
+		samsung_dma_buf_iova_unmap(buf->db_attach, buf->iova);
 
 	/* detach this attachment */
 	dma_buf_detach(buf->db_attach->dmabuf, buf->db_attach);

@@ -22,7 +22,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/exynos_iovmm.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 
 #include <media/m2m1shot-helper.h>
 
@@ -71,8 +71,7 @@ int m2m1shot_dma_addr_map(struct device *dev,
 		prot |= IOMMU_CACHE;
 
 	if (plane->dmabuf) {
-		iova = ion_iovmm_map(plane->attachment, 0,
-					plane->bytes_used, dir, prot);
+		iova = samsung_dma_buf_iova_map(plane->attachment);
 	} else {
 		down_read(&current->mm->mmap_lock);
 		iova = exynos_iovmm_map_userptr(dev,
@@ -96,7 +95,7 @@ void m2m1shot_dma_addr_unmap(struct device *dev,
 	dma_addr_t dma_addr = plane->dma_addr - plane->offset;
 
 	if (plane->dmabuf)
-		ion_iovmm_unmap(plane->attachment, dma_addr);
+		samsung_dma_buf_iova_unmap(plane->attachment, dma_addr);
 	else
 		exynos_iovmm_unmap_userptr(dev, dma_addr);
 
