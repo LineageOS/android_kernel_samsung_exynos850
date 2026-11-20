@@ -32,9 +32,8 @@
 
 #include <linux/dma-buf.h>
 #include <linux/dma-buf-container.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 #include "../../../../drivers/iommu/exynos-iommu.h"
-#include "../../../../drivers/staging/android/uapi/ion.h"
 #include <sound/samsung/abox.h>
 #include "abox_util.h"
 #include "abox_gic.h"

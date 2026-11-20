@@ -13,10 +13,9 @@
 
 #include <linux/dma-buf.h>
 #include <linux/dma-buf-container.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 
 #include "../../../../drivers/iommu/exynos-iommu.h"
-#include "../../../../drivers/staging/android/uapi/ion.h"
 
 #include "abox.h"
 #include "abox_ion.h"
@@ -135,7 +134,6 @@ struct abox_ion_buf *abox_ion_alloc(struct device *dev,
 		bool playback)
 {
 	struct device *dev_abox = data->dev;
-	const char *heapname = "ion_system_heap";
 	struct abox_ion_buf *buf;
 	int ret;
 
@@ -150,8 +148,7 @@ struct abox_ion_buf *abox_ion_alloc(struct device *dev,
 	buf->iova = iova;
 	buf->fd = -EINVAL;
 
-	buf->dma_buf = ion_alloc_dmabuf(heapname, buf->size,
-			ION_FLAG_SYNC_FORCE);
+	buf->dma_buf = samsung_dma_heap_alloc("system-uncached", buf->size);
 	if (IS_ERR(buf->dma_buf)) {
 		ret = PTR_ERR(buf->dma_buf);
 		goto error_alloc;
