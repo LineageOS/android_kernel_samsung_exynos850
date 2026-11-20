@@ -22,7 +22,7 @@
 #include <linux/pm_qos.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 #if defined(CONFIG_EXYNOS_BTS)
 #include <soc/samsung/bts.h>
 #endif

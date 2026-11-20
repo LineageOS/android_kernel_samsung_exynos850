@@ -22,7 +22,7 @@
 #include <linux/clk-provider.h>
 #include <linux/console.h>
 #include <linux/dma-buf.h>
-#include <linux/ion_exynos.h>
+#include <linux/samsung-dma-heap.h>
 #include <linux/sched/types.h>
 #include <linux/highmem.h>
 #include <linux/memblock.h>
@@ -370,7 +370,7 @@ static void decon_free_unused_buf(struct decon_device *decon,
 	decon_info("%s, win[%d]plane[%d]\n", __func__, win, plane);
 
 	if (!IS_ERR_OR_NULL(dma->attachment) && !IS_ERR_VALUE(dma->dma_addr)) {
-		ion_iovmm_unmap(dma->attachment, dma->dma_addr);
+		samsung_dma_buf_iova_unmap(dma->attachment, dma->dma_addr);
 		DPU_EVENT_LOG_MEMMAP(DPU_EVT_MEM_UNMAP, &decon->sd,
 				dma->dma_addr, dma->dpp_ch);
 	}
@@ -396,7 +396,7 @@ static void decon_free_dma_buf(struct decon_device *decon,
 		dma->fence = NULL;
 	}
 	if (!IS_ERR_OR_NULL(dma->attachment) && !IS_ERR_VALUE(dma->dma_addr)) {
-		ion_iovmm_unmap(dma->attachment, dma->dma_addr);
+		samsung_dma_buf_iova_unmap(dma->attachment, dma->dma_addr);
 		DPU_EVENT_LOG_MEMMAP(DPU_EVT_MEM_UNMAP, &decon->sd, dma->dma_addr,
 				dma->dpp_ch);
 	}
@@ -1516,10 +1516,9 @@ static unsigned int decon_map_ion_handle(struct decon_device *decon,
 	}
 
 	/* This is DVA(Device Virtual Address) for setting base address SFR */
-	dma->dma_addr = ion_iovmm_map(dma->attachment, 0, dma->dma_buf->size,
-				      DMA_TO_DEVICE, 0);
+	dma->dma_addr = samsung_dma_buf_iova_map(dma->attachment);
 	if (IS_ERR_VALUE(dma->dma_addr)) {
-		decon_err("ion_iovmm_map() failed: %pa\n", &dma->dma_addr);
+		decon_err("samsung_dma_buf_iova_map() failed: %pa\n", &dma->dma_addr);
 		goto err_iovmm_map;
 	}
 
@@ -3909,9 +3908,11 @@ static int decon_fb_alloc_memory(struct decon_device *decon, struct decon_win *w
 	size = PAGE_ALIGN(size);
 
 	dev_info(decon->dev, "want %u bytes for window[%d]\n", size, win->idx);
-	buf = ion_alloc_dmabuf("ion_system_heap", (size_t)size, 0);
+
+	buf = samsung_dma_heap_alloc("system-uncached", (size_t)size);
 	if (IS_ERR(buf)) {
-		dev_err(decon->dev, "ion_share_dma_buf() failed\n");
+		dev_err(decon->dev, "failed to allocate dma-buf (%ld)\n",
+			PTR_ERR(buf));
 		goto err_share_dma_buf;
 	}
 
@@ -3989,11 +3990,10 @@ static int decon_fb_test_alloc_memory(struct decon_device *decon, u32 size)
 	size = PAGE_ALIGN(size);
 	fbi->fix.smem_len = size;
 
-	dev_info(decon->dev, "want %u bytes for window[%d]\n", size, win->idx);
-
-	buf = ion_alloc_dmabuf("ion_system_heap", (size_t)size, 0);
+	buf = samsung_dma_heap_alloc("system-uncached", (size_t)size);
 	if (IS_ERR(buf)) {
-		dev_err(decon->dev, "ion_share_dma_buf() failed\n");
+		dev_err(decon->dev, "failed to allocate dma-buf (%ld)\n",
+			PTR_ERR(buf));
 		goto err_share_dma_buf;
 	}
 
