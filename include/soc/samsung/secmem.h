@@ -22,7 +22,7 @@ struct secchunk_info {
 	size_t		size;
 };
 
-#if defined(CONFIG_ION)
+#if IS_ENABLED(CONFIG_DMA_SHARED_BUFFER)
 struct secfd_info {
 	int	fd;
 	unsigned long phys;
@@ -55,7 +55,7 @@ int drm_gsc_enable_locked(bool enable);
 #define SECMEM_IOC_GET_DRM_ONOFF	_IOWR('S', 3, int)
 #define SECMEM_IOC_GET_CRYPTO_LOCK	_IOR('S', 4, int)
 #define SECMEM_IOC_RELEASE_CRYPTO_LOCK	_IOR('S', 5, int)
-#if defined(CONFIG_ION)
+#if IS_ENABLED(CONFIG_DMA_SHARED_BUFFER)
 #define SECMEM_IOC_GET_FD_PHYS_ADDR    _IOWR('S', 8, struct secfd_info)
 #endif
 #define SECMEM_IOC_GET_CHUNK_NUM	_IOWR('S', 9, int)

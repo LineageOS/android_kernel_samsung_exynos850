@@ -23,7 +23,6 @@
 #include <linux/export.h>
 #include <linux/pm_qos.h>
 #include <linux/dma-contiguous.h>
-#include <linux/ion_exynos.h>
 #include <linux/smc.h>
 #include <linux/dma-buf.h>
 
@@ -159,7 +158,7 @@ static long secmem_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct secmem_info *info = filp->private_data;
 
 	switch (cmd) {
-#if defined(CONFIG_ION) || defined(CONFIG_ION_EXYNOS)
+#if IS_ENABLED(CONFIG_DMA_SHARED_BUFFER)
 	case (uint32_t)SECMEM_IOC_GET_FD_PHYS_ADDR:
 	{
 		struct secfd_info fd_info;
@@ -178,14 +177,14 @@ static long secmem_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		attachment = dma_buf_attach(dmabuf, info->dev);
-		if (!attachment) {
+		if (IS_ERR_OR_NULL(attachment)) {
 			pr_err("smem ioctl error(%d)\n", __LINE__);
 			dma_buf_put(dmabuf);
 			return -ENOMEM;
 		}
 
 		sgt = dma_buf_map_attachment(attachment, DMA_TO_DEVICE);
-		if (!sgt) {
+		if (IS_ERR_OR_NULL(sgt)) {
 			pr_err("smem ioctl error(%d)\n", __LINE__);
 			dma_buf_detach(dmabuf, attachment);
 			dma_buf_put(dmabuf);
