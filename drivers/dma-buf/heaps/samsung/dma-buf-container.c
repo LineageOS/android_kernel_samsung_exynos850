@@ -364,8 +364,8 @@ int dmabuf_container_set_mask(struct dma_buf *dmabuf, u64 mask)
 
 	container = get_container(dmabuf);
 
-	if (mask & ~((1 << container->count) - 1)) {
-		pr_err("%s: invalid mask %#x for %u buffers\n",
+	if (container->count < 64 && (mask & ~((1ULL << container->count) - 1))) {
+		pr_err("%s: invalid mask %#llx for %u buffers\n",
 		       __func__, mask, container->count);
 		return -EINVAL;
 	}
@@ -417,7 +417,12 @@ EXPORT_SYMBOL_GPL(dmabuf_container_get_buffer);
 struct dma_buf *dma_buf_get_any(int fd)
 {
 	struct dma_buf *dmabuf = dma_buf_get(fd);
-	struct dma_buf *anybuf = __dmabuf_container_get_buffer(dmabuf, 0);
+	struct dma_buf *anybuf;
+
+	if (IS_ERR(dmabuf))
+		return dmabuf;
+
+	anybuf = __dmabuf_container_get_buffer(dmabuf, 0);
 
 	dma_buf_put(dmabuf);
 
