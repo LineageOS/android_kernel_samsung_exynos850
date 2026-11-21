@@ -144,6 +144,17 @@ int mfc_mem_ion_alloc(struct mfc_dev *dev,
 		goto err_iovmm;
 	}
 
+	/*
+	 * DRM context, codec and scratch buffers come from a protected heap
+	 * that refuses kernel mappings, and the CPU never touches them anyway.
+	 * Only the DRM firmware buffer is written by the CPU before it gets
+	 * protected, and its heap allows kernel mappings.
+	 */
+	if (special_buf->buftype == MFCBUF_DRM) {
+		special_buf->vaddr = NULL;
+		return 0;
+	}
+
 	special_buf->vaddr = dma_buf_vmap(special_buf->dma_buf);
 	if (IS_ERR_OR_NULL(special_buf->vaddr)) {
 		mfc_err_dev("Failed to get vaddr (err 0x%p)\n",
