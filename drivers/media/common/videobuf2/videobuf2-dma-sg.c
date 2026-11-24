@@ -672,7 +672,9 @@ static void vb2_dma_sg_detach_dmabuf(void *mem_priv)
 	if (WARN_ON(buf->dma_sgt))
 		vb2_dma_sg_unmap_dmabuf(buf, 0);
 
-	if (dmabuf_container_get_count(buf->db_attach->dmabuf) < 0)
+	/* the buffer is never mapped if preparing it failed */
+	if ((dmabuf_container_get_count(buf->db_attach->dmabuf) < 0) &&
+	    buf->iova && !IS_ERR_VALUE(buf->iova))
 		samsung_dma_buf_iova_unmap(buf->db_attach, buf->iova);
 
 	/* detach this attachment */
