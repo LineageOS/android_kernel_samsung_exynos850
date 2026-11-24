@@ -80,9 +80,7 @@
 
 /* 12 Y/CbCr 4:2:0 SBWC Lossy single */
 #define V4L2_PIX_FMT_NV12N_SBWCL_8B	v4l2_fourcc('N', '1', 'L', '8')
-#ifdef __KERNEL__
 #define V4L2_PIX_FMT_NV12N_SBWCL_10B	v4l2_fourcc('N', '1', 'L', '1')
-#endif /* __KERNEL__ */
 
 /* helper macros */
 #ifndef __ALIGN_UP
