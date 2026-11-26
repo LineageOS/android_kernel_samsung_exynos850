@@ -3035,9 +3035,10 @@ static int __init input_init(void)
 }
 
 /* [ System Performance - Input Booster */
-static void __init input_emstune_init(void)
+static int __init input_emstune_init(void)
 {
 	INIT_INPUT_EMSTUNE()
+	return 0;
 }
 /* System Performance - Input Booster ] */
 

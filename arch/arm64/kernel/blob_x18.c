@@ -136,6 +136,21 @@ void *blob_x18_b2k(void *fn)
 }
 EXPORT_SYMBOL_GPL(blob_x18_b2k);
 
+static bool blob_x18_is_used_stub(struct blob_x18_pool *pool, unsigned long addr)
+{
+	unsigned long start = (unsigned long)pool->stubs;
+
+	return addr >= start &&
+	       addr < start + smp_load_acquire(&pool->used) * BLOB_X18_STUB_SIZE;
+}
+
+bool blob_x18_cfi_target(unsigned long addr)
+{
+	return blob_x18_in_blob(addr) ||
+	       blob_x18_is_used_stub(&k2b_pool, addr) ||
+	       blob_x18_is_used_stub(&b2k_pool, addr);
+}
+
 void blob_x18_wrap_k2b_table(void *table, size_t size)
 {
 	void **p = table;

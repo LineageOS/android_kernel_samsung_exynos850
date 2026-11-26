@@ -13,6 +13,9 @@
 #include <asm/bug.h>
 #include <asm/cacheflush.h>
 #include <asm/set_memory.h>
+#ifdef CONFIG_ARM64
+#include <asm/blob_x18.h>
+#endif
 
 /* Compiler-defined handler names */
 #ifdef CONFIG_CFI_PERMISSIVE
@@ -284,8 +287,19 @@ static inline cfi_check_fn find_cfi_check(void *ptr)
 
 void cfi_slowpath_handler(uint64_t id, void *ptr, void *diag)
 {
-	cfi_check_fn check = find_cfi_check(ptr);
+	cfi_check_fn check;
 
+#ifdef CONFIG_ARM64
+	/*
+	 * Calls into prebuilt code and through its x18 stubs (asm/blob_x18.h)
+	 * can't be type checked. The stubs only lead to targets the kernel
+	 * registered.
+	 */
+	if (unlikely(blob_x18_cfi_target((unsigned long)ptr)))
+		return;
+#endif
+
+	check = find_cfi_check(ptr);
 	if (likely(check))
 		check(id, ptr, diag);
 	else /* Don't allow unchecked modules */

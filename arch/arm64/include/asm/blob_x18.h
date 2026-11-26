@@ -20,12 +20,15 @@ void *blob_x18_b2k(void *fn);
 /* Wrap every pointer-sized word of a table matching the above */
 void blob_x18_wrap_k2b_table(void *table, size_t size);
 void blob_x18_wrap_b2k_table(void *table, size_t size);
+/* Prebuilt code or a stub in use, neither of which has CFI type information */
+bool blob_x18_cfi_target(unsigned long addr);
 #else
 static inline void blob_x18_set_range(unsigned long start, unsigned long end) {}
 static inline void *blob_x18_k2b(void *fn) { return fn; }
 static inline void *blob_x18_b2k(void *fn) { return fn; }
 static inline void blob_x18_wrap_k2b_table(void *table, size_t size) {}
 static inline void blob_x18_wrap_b2k_table(void *table, size_t size) {}
+static inline bool blob_x18_cfi_target(unsigned long addr) { return false; }
 #endif
 
 #endif /* __ASM_BLOB_X18_H */
